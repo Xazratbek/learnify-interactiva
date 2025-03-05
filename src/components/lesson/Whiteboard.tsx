@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -13,7 +12,8 @@ import {
   RotateCcw, 
   Download,
   Check,
-  Copy
+  Copy,
+  AlertTriangle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -36,12 +36,10 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ className }) => {
   const [history, setHistory] = useState<ImageData[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   
-  // Initialize canvas
   useEffect(() => {
     if (!canvasRef.current) return;
     const canvas = canvasRef.current;
     
-    // Set canvas width and height to match its display size
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
     
@@ -53,17 +51,14 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ className }) => {
       context.lineJoin = 'round';
       setCtx(context);
       
-      // Save initial state
       const initialState = context.getImageData(0, 0, canvas.width, canvas.height);
       setHistory([initialState]);
       setHistoryIndex(0);
     }
     
-    // Handle resize
     const handleResize = () => {
       if (!canvas || !context) return;
       
-      // Save current drawing
       const tempCanvas = document.createElement('canvas');
       const tempCtx = tempCanvas.getContext('2d');
       if (!tempCtx) return;
@@ -72,15 +67,12 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ className }) => {
       tempCanvas.height = canvas.height;
       tempCtx.drawImage(canvas, 0, 0);
       
-      // Resize canvas
       canvas.width = canvas.offsetWidth;
       canvas.height = canvas.offsetHeight;
       
-      // Clear and fill with white
       context.fillStyle = '#FFFFFF';
       context.fillRect(0, 0, canvas.width, canvas.height);
       
-      // Draw saved image back
       context.drawImage(tempCanvas, 0, 0);
     };
     
@@ -88,15 +80,12 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ className }) => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
-  // Save state to history
   const saveState = () => {
     if (!canvasRef.current || !ctx) return;
     
     const canvas = canvasRef.current;
     const newState = ctx.getImageData(0, 0, canvas.width, canvas.height);
     
-    // If we've gone back in history and now are drawing something new,
-    // we need to remove all future states
     if (historyIndex < history.length - 1) {
       setHistory(history.slice(0, historyIndex + 1));
     }
@@ -105,7 +94,6 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ className }) => {
     setHistoryIndex(historyIndex + 1);
   };
   
-  // Handle mouse/touch events
   const startDrawing = (x: number, y: number) => {
     if (!ctx) return;
     
@@ -128,7 +116,6 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ className }) => {
       ctx.lineTo(x, y);
       ctx.stroke();
     } else if (tool === 'rectangle') {
-      // Clear canvas to previous state and redraw rectangle
       if (historyIndex >= 0) {
         ctx.putImageData(history[historyIndex], 0, 0);
       }
@@ -136,7 +123,6 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ className }) => {
       ctx.lineWidth = lineWidth;
       ctx.strokeRect(startX, startY, x - startX, y - startY);
     } else if (tool === 'circle') {
-      // Clear canvas to previous state and redraw circle
       if (historyIndex >= 0) {
         ctx.putImageData(history[historyIndex], 0, 0);
       }
@@ -156,7 +142,6 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ className }) => {
     saveState();
   };
   
-  // Handle mouse events
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current) return;
     
@@ -179,7 +164,6 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ className }) => {
     draw(x, y);
   };
   
-  // Handle touch events
   const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current) return;
     e.preventDefault();
@@ -206,7 +190,6 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ className }) => {
     draw(x, y);
   };
   
-  // Undo
   const handleUndo = () => {
     if (historyIndex <= 0) return;
     
@@ -220,7 +203,6 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ className }) => {
     });
   };
   
-  // Clear whiteboard
   const handleClear = () => {
     if (!ctx || !canvasRef.current) return;
     
@@ -228,7 +210,6 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ className }) => {
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Reset history
     const newState = ctx.getImageData(0, 0, canvas.width, canvas.height);
     setHistory([newState]);
     setHistoryIndex(0);
@@ -238,7 +219,6 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ className }) => {
     });
   };
   
-  // Download whiteboard
   const handleDownload = () => {
     if (!canvasRef.current) return;
     
@@ -256,7 +236,6 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ className }) => {
     });
   };
   
-  // Copy to clipboard
   const handleCopy = async () => {
     if (!canvasRef.current) return;
     
@@ -276,12 +255,11 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ className }) => {
       console.error('Failed to copy', error);
       toast("Failed to copy to clipboard", {
         description: "Your browser may not support this feature",
-        variant: "destructive"
+        icon: <AlertTriangle className="h-4 w-4 text-red-500" />
       });
     }
   };
   
-  // Apply current history state when historyIndex changes
   useEffect(() => {
     if (!ctx || historyIndex < 0 || historyIndex >= history.length) return;
     
