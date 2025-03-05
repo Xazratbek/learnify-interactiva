@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase';
 
 // Function to save lesson progress
@@ -74,12 +73,33 @@ const mockGenerateLessonContent = (topic: string, learningStyle: string | null) 
   return content;
 };
 
+// Define the AI response types
+interface DrawingInstruction {
+  type: string;
+  x?: number;
+  y?: number;
+  radius?: number;
+  color?: string;
+  text?: string;
+  x1?: number;
+  y1?: number;
+  x2?: number;
+  y2?: number;
+  width?: number;
+  height?: number;
+}
+
+interface AIResponseWithDrawing {
+  text: string;
+  drawingInstructions: DrawingInstruction[];
+}
+
 // AI Chat response generation
 export const generateAIResponse = async (
   userId: string,
   userMessage: string,
   conversationHistory: Array<{ role: string; content: string }>
-) => {
+): Promise<string | AIResponseWithDrawing> => {
   try {
     // In a real implementation, this would call your Gemini API
     // For demo purposes, we're returning mock responses
@@ -94,7 +114,7 @@ export const generateAIResponse = async (
 const mockGenerateAIResponse = (
   userMessage: string, 
   conversationHistory: Array<{ role: string; content: string }>
-) => {
+): string | AIResponseWithDrawing => {
   const message = userMessage.toLowerCase();
   
   if (message.includes('hello') || message.includes('hi')) {
