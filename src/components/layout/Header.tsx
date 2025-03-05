@@ -1,157 +1,137 @@
 
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { Book, Sparkles, Menu, LogOut, User } from 'lucide-react';
-import { 
-  Sheet,
-  SheetContent,
-  SheetTrigger
-} from '@/components/ui/sheet';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Menu, X, LogIn, LogOut, User, MessageCircle } from 'lucide-react';
+import { useMobile } from '@/hooks/use-mobile';
+import { toast } from 'sonner';
 
-const Header: React.FC = () => {
-  const isMobile = useIsMobile();
-  const { user, profile, signOut } = useAuth();
+const Header = () => {
+  const { user, signOut } = useAuth();
+  const isMobile = useMobile();
   const navigate = useNavigate();
   
-  const getUserInitials = () => {
-    if (profile?.username) {
-      return profile.username.substring(0, 2).toUpperCase();
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast.success('Successfully signed out');
+      navigate('/');
+    } catch (error) {
+      toast.error('Failed to sign out');
+      console.error(error);
     }
-    if (user?.email) {
-      return user.email.substring(0, 2).toUpperCase();
-    }
-    return 'AI';
   };
   
-  const MenuItems = () => (
-    <>
-      <Link to="/" className="text-foreground/80 hover:text-foreground transition-colors">
-        Home
-      </Link>
-      <Link to="/topics" className="text-foreground/80 hover:text-foreground transition-colors">
-        Browse Topics
-      </Link>
-      {user && (
-        <Link to="/my-lessons" className="text-foreground/80 hover:text-foreground transition-colors">
-          My Lessons
-        </Link>
-      )}
-      <Link to="/about" className="text-foreground/80 hover:text-foreground transition-colors">
-        About
-      </Link>
-    </>
-  );
-  
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between py-4">
-        <div className="flex items-center gap-2">
-          <Link 
-            to="/" 
-            className="flex items-center gap-2 font-medium transition-colors hover:text-foreground/80"
-          >
-            <Book className="h-5 w-5 text-primary" />
-            <span className="text-xl font-semibold">AI Tutor</span>
+        <div className="flex gap-6 md:gap-10">
+          <Link to="/" className="flex items-center space-x-2">
+            <span className="text-xl font-bold inline-block">EduLearn</span>
           </Link>
+          
+          {!isMobile && (
+            <nav className="flex gap-6">
+              <Link to="/" className="flex items-center text-lg font-medium transition-colors hover:text-primary">
+                Home
+              </Link>
+              {user && (
+                <Link to="/chat" className="flex items-center text-lg font-medium transition-colors hover:text-primary">
+                  <MessageCircle className="mr-1 h-4 w-4" />
+                  AI Chat
+                </Link>
+              )}
+            </nav>
+          )}
         </div>
         
         {isMobile ? (
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
+              <Button variant="outline" size="icon" className="mr-2">
                 <Menu className="h-5 w-5" />
-                <span className="sr-only">Toggle menu</span>
+                <span className="sr-only">Toggle Menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent>
-              <div className="flex flex-col space-y-4 mt-8">
-                <MenuItems />
-                {!user && (
-                  <>
-                    <Link 
-                      to="/login" 
-                      className="text-foreground/80 hover:text-foreground transition-colors"
-                    >
-                      Sign In
-                    </Link>
-                    <Link 
-                      to="/signup" 
-                      className="text-foreground/80 hover:text-foreground transition-colors"
-                    >
-                      Sign Up
-                    </Link>
-                  </>
-                )}
+            <SheetContent side="right" className="flex flex-col">
+              <div className="px-7">
+                <Link to="/" className="flex items-center">
+                  <span className="text-xl font-bold">EduLearn</span>
+                </Link>
+              </div>
+              <nav className="flex flex-col gap-4 mt-10">
+                <Link to="/" className="px-7 py-2 text-lg font-medium hover:text-primary">
+                  Home
+                </Link>
                 {user && (
-                  <Button 
-                    variant="outline" 
-                    className="justify-start px-2" 
-                    onClick={() => signOut()}
-                  >
-                    <LogOut className="mr-2 h-4 w-4" /> Sign Out
-                  </Button>
+                  <Link to="/chat" className="px-7 py-2 text-lg font-medium hover:text-primary flex items-center">
+                    <MessageCircle className="mr-2 h-4 w-4" />
+                    AI Chat
+                  </Link>
+                )}
+              </nav>
+              <div className="mt-auto px-7 py-4">
+                {user ? (
+                  <div className="flex flex-col gap-4">
+                    <p className="text-sm text-muted-foreground">
+                      Signed in as <span className="font-medium text-foreground">{user.email}</span>
+                    </p>
+                    <Button variant="outline" className="w-full justify-start" onClick={handleSignOut}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Sign out
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <Button asChild>
+                      <Link to="/login">
+                        <LogIn className="mr-2 h-4 w-4" />
+                        Sign in
+                      </Link>
+                    </Button>
+                    <Button variant="outline" asChild>
+                      <Link to="/signup">
+                        <User className="mr-2 h-4 w-4" />
+                        Sign up
+                      </Link>
+                    </Button>
+                  </div>
                 )}
               </div>
             </SheetContent>
           </Sheet>
         ) : (
-          <nav className="flex items-center gap-6">
-            <MenuItems />
-          </nav>
+          <div className="flex items-center gap-2">
+            {user ? (
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-muted-foreground">
+                  {user.email}
+                </span>
+                <Button variant="outline" size="sm" onClick={handleSignOut}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign out
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/login">
+                    <LogIn className="mr-2 h-4 w-4" />
+                    Sign in
+                  </Link>
+                </Button>
+                <Button size="sm" asChild>
+                  <Link to="/signup">
+                    <User className="mr-2 h-4 w-4" />
+                    Sign up
+                  </Link>
+                </Button>
+              </div>
+            )}
+          </div>
         )}
-        
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm" className="hidden md:flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <span>Upgrade</span>
-          </Button>
-          
-          {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Avatar className="h-8 w-8 transition-transform hover:scale-105 cursor-pointer">
-                  <AvatarImage src="" alt={profile?.username || user.email || 'User'} />
-                  <AvatarFallback className="bg-primary/10 text-primary">{getUserInitials()}</AvatarFallback>
-                </Avatar>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate('/profile')}>
-                  <User className="mr-2 h-4 w-4" />Profile
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/my-lessons')}>
-                  <Book className="mr-2 h-4 w-4" />My Lessons
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => signOut()}>
-                  <LogOut className="mr-2 h-4 w-4" />Sign Out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={() => navigate('/login')}>
-                Sign In
-              </Button>
-              <Button size="sm" onClick={() => navigate('/signup')}>
-                Sign Up
-              </Button>
-            </div>
-          )}
-        </div>
       </div>
     </header>
   );
