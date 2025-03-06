@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase, UserProfile } from '@/lib/supabase';
@@ -80,6 +81,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       
+      // First, check if the profiles table exists
+      const { error: tableCheckError } = await supabase
+        .from('profiles')
+        .select('id')
+        .limit(1);
+      
+      if (tableCheckError && tableCheckError.message.includes('relation "profiles" does not exist')) {
+        throw new Error('The database tables are not set up correctly. Please run database migrations first.');
+      }
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -99,7 +110,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           ]);
           
-        if (profileError) throw profileError;
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+          throw new Error(`Failed to create user profile: ${profileError.message}`);
+        }
       }
       
       toast('Account created successfully!', {
@@ -108,8 +122,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       navigate('/login');
     } catch (error: any) {
+      console.error('Signup error:', error);
+      
+      let errorMessage = 'An unexpected error occurred';
+      if (error.message.includes('relation "profiles" does not exist')) {
+        errorMessage = 'Database tables are not set up. Please contact the administrator.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast('Signup failed', {
-        description: error.message || 'An unexpected error occurred'
+        description: errorMessage
       });
     } finally {
       setLoading(false);
@@ -137,6 +160,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       navigate('/');
     } catch (error: any) {
+      console.error('Sign in error:', error);
       toast('Sign in failed', {
         description: error.message || 'Invalid email or password'
       });
