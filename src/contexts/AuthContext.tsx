@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase, UserProfile } from '@/lib/supabase';
@@ -26,19 +25,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [supabaseConfigured, setSupabaseConfigured] = useState(true);
   const navigate = useNavigate();
 
-  // Check if Supabase is configured with real credentials
   useEffect(() => {
-    const isMockSupabase = 
-      !import.meta.env.VITE_SUPABASE_URL || 
-      import.meta.env.VITE_SUPABASE_URL === 'https://example.supabase.co' ||
-      !import.meta.env.VITE_SUPABASE_ANON_KEY ||
-      import.meta.env.VITE_SUPABASE_ANON_KEY === 'example-anon-key';
-    
-    setSupabaseConfigured(!isMockSupabase);
-  }, []);
-
-  useEffect(() => {
-    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -48,7 +35,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
     });
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setSession(session);
@@ -94,10 +80,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       
-      if (!supabaseConfigured) {
-        throw new Error('Supabase is not properly configured. Please add valid Supabase credentials to your environment variables.');
-      }
-      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -105,7 +87,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
       
-      // Create default profile on signup
       if (data.user) {
         const { error: profileError } = await supabase
           .from('profiles')
@@ -138,10 +119,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
-      
-      if (!supabaseConfigured) {
-        throw new Error('Supabase is not properly configured. Please add valid Supabase credentials to your environment variables.');
-      }
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
