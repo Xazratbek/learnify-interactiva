@@ -1,3 +1,4 @@
+
 import { supabase } from '@/lib/supabase';
 
 // Function to save lesson progress
@@ -74,7 +75,7 @@ const mockGenerateLessonContent = (topic: string, learningStyle: string | null) 
 };
 
 // Define the AI response types
-interface DrawingInstruction {
+export interface DrawingInstruction {
   type: string;
   x?: number;
   y?: number;
@@ -89,7 +90,7 @@ interface DrawingInstruction {
   height?: number;
 }
 
-interface AIResponseWithDrawing {
+export interface AIResponseWithDrawing {
   text: string;
   drawingInstructions: DrawingInstruction[];
 }

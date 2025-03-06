@@ -1,14 +1,17 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Default mock URLs for development when environment variables aren't set
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://example.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'example-anon-key';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
-}
-
+// Create the Supabase client
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// Show a console warning if using mock values
+if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+  console.warn('Missing Supabase environment variables. Using mock values for development.');
+}
 
 export type UserProfile = {
   id: string;

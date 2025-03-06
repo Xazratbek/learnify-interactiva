@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -17,16 +16,20 @@ interface Message {
   drawingInstructions?: any[];
 }
 
+interface ConversationHistoryItem {
+  role: string;
+  content: string;
+}
+
 const Chat = () => {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [activeTab, setActiveTab] = useState("chat");
-  const [conversationHistory, setConversationHistory] = useState<Array<{ role: string; content: string }>>([]);
+  const [conversationHistory, setConversationHistory] = useState<ConversationHistoryItem[]>([]);
   const [whiteboardData, setWhiteboardData] = useState<any>(null);
   
   const { isSpeaking, isMuted, speak, toggleMute } = useTextToSpeech();
 
-  // Generate a welcome message when the component mounts
   useEffect(() => {
     const welcomeMessage: Message = {
       id: Date.now().toString(),
@@ -44,7 +47,6 @@ const Chat = () => {
   }, [user?.email, isMuted, speak]);
 
   const handleSendMessage = async (messageContent: string) => {
-    // Create user message
     const userMessage: Message = {
       id: Date.now().toString(),
       content: messageContent,
@@ -52,19 +54,16 @@ const Chat = () => {
       timestamp: new Date(),
     };
     
-    // Add user message to chat
     setMessages(prev => [...prev, userMessage]);
     setConversationHistory(prev => [...prev, { role: 'user', content: userMessage.content }]);
     
     try {
-      // Generate AI response using the service
       const aiResponseData = await generateAIResponse(
         user?.id || '',
         userMessage.content,
         conversationHistory
       );
       
-      // Check if the response contains drawing instructions
       let aiResponse: Message;
       
       if (typeof aiResponseData === 'object' && 'text' in aiResponseData) {
@@ -76,12 +75,12 @@ const Chat = () => {
           drawingInstructions: aiResponseData.drawingInstructions
         };
         
-        // If there are drawing instructions, show the whiteboard tab
         if (aiResponseData.drawingInstructions && aiResponseData.drawingInstructions.length > 0) {
           setWhiteboardData(aiResponseData.drawingInstructions);
-          // Switch to whiteboard tab after a small delay
           setTimeout(() => setActiveTab("whiteboard"), 1000);
         }
+        
+        setConversationHistory(prev => [...prev, { role: 'assistant', content: aiResponseData.text }]);
       } else {
         aiResponse = {
           id: (Date.now() + 1).toString(),
@@ -89,12 +88,12 @@ const Chat = () => {
           sender: 'ai',
           timestamp: new Date(),
         };
+        
+        setConversationHistory(prev => [...prev, { role: 'assistant', content: aiResponseData as string }]);
       }
       
       setMessages(prev => [...prev, aiResponse]);
-      setConversationHistory(prev => [...prev, { role: 'assistant', content: aiResponse.content }]);
       
-      // Read the response aloud if not muted
       if (!isMuted) {
         speak(aiResponse.content);
       }
@@ -106,7 +105,6 @@ const Chat = () => {
 
   const handleWhiteboardDataUpdate = (newData: any) => {
     console.log("Updated whiteboard data:", newData);
-    // In a real implementation, you would call a service function here
   };
 
   const handleViewWhiteboard = () => {
