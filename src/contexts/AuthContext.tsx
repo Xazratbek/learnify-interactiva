@@ -13,6 +13,7 @@ type AuthContextType = {
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   loading: boolean;
+  supabaseConfigured: boolean;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,7 +23,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [supabaseConfigured, setSupabaseConfigured] = useState(true);
   const navigate = useNavigate();
+
+  // Check if Supabase is configured with real credentials
+  useEffect(() => {
+    const isMockSupabase = 
+      !import.meta.env.VITE_SUPABASE_URL || 
+      import.meta.env.VITE_SUPABASE_URL === 'https://example.supabase.co' ||
+      !import.meta.env.VITE_SUPABASE_ANON_KEY ||
+      import.meta.env.VITE_SUPABASE_ANON_KEY === 'example-anon-key';
+    
+    setSupabaseConfigured(!isMockSupabase);
+  }, []);
 
   useEffect(() => {
     // Get initial session
@@ -80,6 +93,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async (email: string, password: string) => {
     try {
       setLoading(true);
+      
+      if (!supabaseConfigured) {
+        throw new Error('Supabase is not properly configured. Please add valid Supabase credentials to your environment variables.');
+      }
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -120,6 +138,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
+      
+      if (!supabaseConfigured) {
+        throw new Error('Supabase is not properly configured. Please add valid Supabase credentials to your environment variables.');
+      }
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -173,7 +196,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signUp,
         signIn,
         signOut,
-        loading
+        loading,
+        supabaseConfigured
       }}
     >
       {children}

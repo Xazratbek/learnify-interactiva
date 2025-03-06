@@ -16,7 +16,8 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Book } from 'lucide-react';
+import { Book, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const formSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -30,7 +31,7 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 const SignUp: React.FC = () => {
-  const { signUp, loading } = useAuth();
+  const { signUp, loading, supabaseConfigured } = useAuth();
   
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -59,6 +60,16 @@ const SignUp: React.FC = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {!supabaseConfigured && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Configuration Error</AlertTitle>
+              <AlertDescription>
+                Supabase is not properly configured. Authentication will not work until proper Supabase credentials are provided.
+              </AlertDescription>
+            </Alert>
+          )}
+          
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
@@ -100,7 +111,7 @@ const SignUp: React.FC = () => {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button type="submit" className="w-full" disabled={loading || !supabaseConfigured}>
                 {loading ? "Creating account..." : "Sign up"}
               </Button>
             </form>
