@@ -3,6 +3,7 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { HelpCircle } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -10,6 +11,7 @@ interface Message {
   sender: 'user' | 'ai';
   timestamp: Date;
   drawingInstructions?: any[];
+  isFollowUpQuestion?: boolean;
 }
 
 interface ChatMessageProps {
@@ -32,8 +34,11 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
     >
       {message.sender === 'ai' && (
         <Avatar className="h-8 w-8 mt-1">
-          <AvatarFallback className="bg-primary text-primary-foreground">
-            AI
+          <AvatarFallback className={cn(
+            "text-primary-foreground",
+            message.isFollowUpQuestion ? "bg-amber-500" : "bg-primary"
+          )}>
+            {message.isFollowUpQuestion ? "?" : "AI"}
           </AvatarFallback>
         </Avatar>
       )}
@@ -43,9 +48,17 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
           "rounded-lg px-4 py-2 text-sm",
           message.sender === 'user'
             ? "bg-primary text-primary-foreground"
-            : "bg-muted"
+            : message.isFollowUpQuestion
+              ? "bg-amber-100 border border-amber-300"
+              : "bg-muted"
         )}
       >
+        {message.isFollowUpQuestion && (
+          <div className="flex items-center gap-2 mb-1 text-amber-600 font-medium">
+            <HelpCircle className="h-4 w-4" />
+            <span>Follow-up Question</span>
+          </div>
+        )}
         <p className="whitespace-pre-wrap">{message.content}</p>
         {message.drawingInstructions && (
           <Button 

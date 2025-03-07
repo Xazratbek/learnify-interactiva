@@ -7,9 +7,10 @@ import { toast } from 'sonner';
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
+  disabled?: boolean;
 }
 
-const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage }) => {
+const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }) => {
   const [inputValue, setInputValue] = useState('');
   const [isListening, setIsListening] = useState(false);
   const recognition = useRef<SpeechRecognition | null>(null);
@@ -48,6 +49,8 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage }) => {
   }, []);
 
   const toggleListening = () => {
+    if (disabled) return;
+    
     if (!recognition.current) {
       toast.error("Speech recognition is not available in your browser.");
       return;
@@ -66,10 +69,16 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!inputValue.trim()) return;
+    if (disabled || !inputValue.trim()) return;
     
     onSendMessage(inputValue.trim());
     setInputValue('');
+    
+    // Stop listening after sending a message
+    if (isListening && recognition.current) {
+      recognition.current.stop();
+      setIsListening(false);
+    }
   };
 
   return (
@@ -80,22 +89,27 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage }) => {
         size="icon"
         onClick={toggleListening}
         className={isListening ? "bg-red-500 hover:bg-red-600" : ""}
+        disabled={disabled}
       >
         {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
       </Button>
       
       <Input
-        placeholder={isListening ? "Listening..." : "Type your message..."}
+        placeholder={
+          disabled ? "AI is thinking..." : 
+          isListening ? "Listening..." : 
+          "Type your message..."
+        }
         value={inputValue}
         onChange={(e) => setInputValue(e.target.value)}
         className="flex-1"
-        disabled={isListening}
+        disabled={disabled || isListening}
       />
       
       <Button
         type="submit"
         size="icon"
-        disabled={!inputValue.trim()}
+        disabled={disabled || !inputValue.trim()}
       >
         <Send className="h-4 w-4" />
       </Button>

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ interface Message {
   sender: 'user' | 'ai';
   timestamp: Date;
   drawingInstructions?: any[];
+  isFollowUpQuestion?: boolean;
 }
 
 interface ChatContainerProps {
@@ -23,6 +24,7 @@ interface ChatContainerProps {
   isSpeaking: boolean;
   isMuted: boolean;
   onToggleMute: () => void;
+  isAiThinking?: boolean;
 }
 
 const ChatContainer: React.FC<ChatContainerProps> = ({
@@ -31,7 +33,8 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
   onViewWhiteboard,
   isSpeaking,
   isMuted,
-  onToggleMute
+  onToggleMute,
+  isAiThinking = false
 }) => {
   const { user } = useAuth();
   const userInitial = user?.email?.charAt(0).toUpperCase() || 'U';
@@ -44,11 +47,12 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
             <Avatar className="h-8 w-8 bg-primary">
               <AvatarFallback>AI</AvatarFallback>
             </Avatar>
-            {isSpeaking && (
-              <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-background"></span>
+            {(isSpeaking || isAiThinking) && (
+              <span className={`absolute bottom-0 right-0 h-3 w-3 rounded-full ${isAiThinking ? 'bg-amber-500 animate-pulse' : 'bg-green-500'} border-2 border-background`}></span>
             )}
           </div>
           AI Learning Assistant
+          {isAiThinking && <span className="text-sm text-muted-foreground ml-2">(thinking...)</span>}
           <div className="ml-auto flex items-center gap-2">
             <Button
               variant="ghost"
@@ -79,7 +83,10 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
       </CardContent>
       
       <CardFooter className="p-4 border-t">
-        <ChatInput onSendMessage={onSendMessage} />
+        <ChatInput 
+          onSendMessage={onSendMessage} 
+          disabled={isAiThinking} 
+        />
       </CardFooter>
     </Card>
   );

@@ -1,5 +1,5 @@
-
 import { supabase } from '@/lib/supabase';
+import { generateGeminiResponse } from './geminiService';
 
 // Function to save lesson progress
 export const saveLessonProgress = async (
@@ -31,16 +31,38 @@ export const saveLessonProgress = async (
 // Function to get lesson content from AI
 export const getLessonContent = async (topic: string, learningStyle: string | null) => {
   try {
-    // In a real implementation, this would call your Gemini API
-    // For demo purposes, we're returning mock content
-    return mockGenerateLessonContent(topic, learningStyle);
+    // Generate lesson content using Gemini API
+    const prompt = `Create a detailed lesson about "${topic}" tailored for ${learningStyle || 'visual'} learners. 
+    Include an introduction, key concepts, practical examples, and summary. 
+    If appropriate, include drawing instructions for a visual representation.`;
+    
+    const response = await generateGeminiResponse(prompt);
+    
+    return {
+      title: `Understanding ${topic}`,
+      introduction: response.text.split('\n\n')[0] || `Welcome to your personalized lesson on ${topic}.`,
+      sections: [
+        {
+          heading: `Key Concepts of ${topic}`,
+          content: response.text,
+          examples: [],
+        }
+      ],
+      summary: `This concludes our overview of ${topic}.`,
+      exercises: [
+        `Practice question 1 about ${topic}?`,
+        `Practice question 2 about ${topic}?`,
+      ],
+      drawingInstructions: response.drawingInstructions || [],
+    };
   } catch (error) {
     console.error('Error generating lesson content:', error);
-    throw error;
+    // Fallback to mock content if Gemini fails
+    return mockGenerateLessonContent(topic, learningStyle);
   }
 };
 
-// Mock function to generate lesson content
+// Mock function to generate lesson content as fallback
 const mockGenerateLessonContent = (topic: string, learningStyle: string | null) => {
   const style = learningStyle || 'visual';
   
@@ -102,16 +124,33 @@ export const generateAIResponse = async (
   conversationHistory: Array<{ role: string; content: string }>
 ): Promise<string | AIResponseWithDrawing> => {
   try {
-    // In a real implementation, this would call your Gemini API
-    // For demo purposes, we're returning mock responses
-    return mockGenerateAIResponse(userMessage, conversationHistory);
+    // Convert the conversation history to Gemini format
+    const geminiHistory = conversationHistory.map(message => ({
+      role: message.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: message.content }]
+    }));
+    
+    // Generate response using Gemini API
+    const response = await generateGeminiResponse(userMessage, geminiHistory);
+    
+    // If there are drawing instructions, return them along with the text
+    if (response.drawingInstructions && response.drawingInstructions.length > 0) {
+      return {
+        text: response.text,
+        drawingInstructions: response.drawingInstructions
+      };
+    }
+    
+    // Otherwise just return the text
+    return response.text;
   } catch (error) {
     console.error('Error generating AI response:', error);
-    throw error;
+    // Fallback to mock responses if Gemini API fails
+    return mockGenerateAIResponse(userMessage, conversationHistory);
   }
 };
 
-// Mock function to generate AI response
+// Mock function to generate AI response as fallback
 const mockGenerateAIResponse = (
   userMessage: string, 
   conversationHistory: Array<{ role: string; content: string }>

@@ -1,12 +1,13 @@
+
 import React, { useState, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
-import { generateAIResponse } from '@/services/lessonService';
 import { toast } from 'sonner';
 import ChatContainer from '@/components/chat/ChatContainer';
 import WhiteboardContainer from '@/components/chat/WhiteboardContainer';
 import { useTextToSpeech } from '@/components/chat/useTextToSpeech';
+import { generateGeminiResponse, GeminiMessage } from '@/services/geminiService';
 
 interface Message {
   id: string;
@@ -14,32 +15,34 @@ interface Message {
   sender: 'user' | 'ai';
   timestamp: Date;
   drawingInstructions?: any[];
-}
-
-interface ConversationHistoryItem {
-  role: string;
-  content: string;
+  isFollowUpQuestion?: boolean;
 }
 
 const Chat = () => {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [activeTab, setActiveTab] = useState("chat");
-  const [conversationHistory, setConversationHistory] = useState<ConversationHistoryItem[]>([]);
+  const [geminiHistory, setGeminiHistory] = useState<GeminiMessage[]>([]);
   const [whiteboardData, setWhiteboardData] = useState<any>(null);
+  const [isAiThinking, setIsAiThinking] = useState(false);
   
   const { isSpeaking, isMuted, speak, toggleMute } = useTextToSpeech();
 
   useEffect(() => {
     const welcomeMessage: Message = {
       id: Date.now().toString(),
-      content: `Hello ${user?.email || 'there'}! I'm your AI learning assistant. How can I help you today?`,
+      content: `Hello ${user?.email || 'there'}! I'm your AI learning assistant. What topic would you like to explore today?`,
       sender: 'ai',
       timestamp: new Date(),
     };
     
     setMessages([welcomeMessage]);
-    setConversationHistory([{ role: 'assistant', content: welcomeMessage.content }]);
+    setGeminiHistory([
+      {
+        role: 'model',
+        parts: [{ text: welcomeMessage.content }]
+      }
+    ]);
     
     if (!isMuted) {
       speak(welcomeMessage.content);
@@ -47,6 +50,7 @@ const Chat = () => {
   }, [user?.email, isMuted, speak]);
 
   const handleSendMessage = async (messageContent: string) => {
+    // Add user message to the UI
     const userMessage: Message = {
       id: Date.now().toString(),
       content: messageContent,
@@ -55,51 +59,72 @@ const Chat = () => {
     };
     
     setMessages(prev => [...prev, userMessage]);
-    setConversationHistory(prev => [...prev, { role: 'user', content: userMessage.content }]);
+    setIsAiThinking(true);
     
     try {
-      const aiResponseData = await generateAIResponse(
-        user?.id || '',
-        userMessage.content,
-        conversationHistory
+      // Generate AI response using Gemini
+      const geminiResponse = await generateGeminiResponse(
+        messageContent,
+        geminiHistory
       );
       
-      let aiResponse: Message;
+      // Create the AI response message
+      const aiResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        content: geminiResponse.text,
+        sender: 'ai',
+        timestamp: new Date(),
+        drawingInstructions: geminiResponse.drawingInstructions
+      };
       
-      if (typeof aiResponseData === 'object' && 'text' in aiResponseData) {
-        aiResponse = {
-          id: (Date.now() + 1).toString(),
-          content: aiResponseData.text,
-          sender: 'ai',
-          timestamp: new Date(),
-          drawingInstructions: aiResponseData.drawingInstructions
-        };
-        
-        if (aiResponseData.drawingInstructions && aiResponseData.drawingInstructions.length > 0) {
-          setWhiteboardData(aiResponseData.drawingInstructions);
-          setTimeout(() => setActiveTab("whiteboard"), 1000);
-        }
-        
-        setConversationHistory(prev => [...prev, { role: 'assistant', content: aiResponseData.text }]);
-      } else {
-        aiResponse = {
-          id: (Date.now() + 1).toString(),
-          content: aiResponseData as string,
-          sender: 'ai',
-          timestamp: new Date(),
-        };
-        
-        setConversationHistory(prev => [...prev, { role: 'assistant', content: aiResponseData as string }]);
-      }
-      
+      // Update messages state with AI response
       setMessages(prev => [...prev, aiResponse]);
       
+      // Update Gemini conversation history
+      setGeminiHistory(prev => [
+        ...prev,
+        { role: 'user', parts: [{ text: messageContent }] },
+        { role: 'model', parts: [{ text: geminiResponse.text }] }
+      ]);
+      
+      // If there are drawing instructions, update whiteboard data and switch to it
+      if (geminiResponse.drawingInstructions && geminiResponse.drawingInstructions.length > 0) {
+        setWhiteboardData(geminiResponse.drawingInstructions);
+        setTimeout(() => setActiveTab("whiteboard"), 1000);
+      }
+      
+      // Speak the AI response if text-to-speech is enabled
       if (!isMuted) {
-        speak(aiResponse.content);
+        speak(geminiResponse.text);
+      }
+      
+      // If there's a follow-up question, send it after a delay
+      if (geminiResponse.shouldAskFollowUp && geminiResponse.followUpQuestion) {
+        setTimeout(() => {
+          const followUpMessage: Message = {
+            id: (Date.now() + 2).toString(),
+            content: geminiResponse.followUpQuestion!,
+            sender: 'ai',
+            timestamp: new Date(),
+            isFollowUpQuestion: true
+          };
+          
+          setMessages(prev => [...prev, followUpMessage]);
+          setGeminiHistory(prev => [
+            ...prev,
+            { role: 'model', parts: [{ text: geminiResponse.followUpQuestion! }] }
+          ]);
+          
+          if (!isMuted) {
+            speak(geminiResponse.followUpQuestion!);
+          }
+        }, 5000); // Wait 5 seconds before asking the follow-up
       }
     } catch (error) {
       console.error("Error generating AI response:", error);
       toast.error("Failed to get AI response. Please try again.");
+    } finally {
+      setIsAiThinking(false);
     }
   };
 
@@ -139,6 +164,7 @@ const Chat = () => {
               isSpeaking={isSpeaking}
               isMuted={isMuted}
               onToggleMute={toggleMute}
+              isAiThinking={isAiThinking}
             />
           </TabsContent>
           
