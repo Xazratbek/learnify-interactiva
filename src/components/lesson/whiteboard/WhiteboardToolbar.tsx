@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,7 +18,7 @@ import {
   Check,
   Loader2,
   Image as ImageIcon,
-  MagicWandIcon,
+  Wand2,
   Sparkles,
 } from 'lucide-react';
 
@@ -284,7 +283,7 @@ const WhiteboardToolbar: React.FC<WhiteboardToolbarProps> = ({
                   </>
                 ) : (
                   <>
-                    <MagicWandIcon className="mr-2 h-4 w-4" />
+                    <Wand2 className="mr-2 h-4 w-4" />
                     Generate Drawing
                   </>
                 )}
