@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { generateGeminiResponse } from './geminiService';
+import { generateGeminiResponse, GeminiMessage } from './geminiService';
 
 // Function to save lesson progress
 export const saveLessonProgress = async (
@@ -125,10 +125,10 @@ export const generateAIResponse = async (
 ): Promise<string | AIResponseWithDrawing> => {
   try {
     // Convert the conversation history to Gemini format
-    const geminiHistory = conversationHistory.map(message => ({
+    const geminiHistory: GeminiMessage[] = conversationHistory.map(message => ({
       role: message.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: message.content }]
-    }));
+    } as GeminiMessage));
     
     // Generate response using Gemini API
     const response = await generateGeminiResponse(userMessage, geminiHistory);
