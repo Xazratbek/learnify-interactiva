@@ -38,12 +38,16 @@ const WhiteboardInteractive: React.FC<WhiteboardProps> = ({
     lastY,
     setLastY,
     saveStatus,
+    imageUrl,
+    setImageUrl,
     handleUndo,
     handleRedo,
     handleClear,
     handleSave,
     handleDownload,
+    handleAddImage,
     saveToHistory,
+    generateAIDrawing,
   } = useWhiteboardState(initialData, onDataUpdate, readOnly, lessonId);
 
   // Mouse event handlers
@@ -166,6 +170,10 @@ const WhiteboardInteractive: React.FC<WhiteboardProps> = ({
             saveStatus={saveStatus}
             historyIndex={historyIndex}
             history={history}
+            imageUrl={imageUrl}
+            setImageUrl={setImageUrl}
+            handleAddImage={handleAddImage}
+            generateAIDrawing={generateAIDrawing}
           />
           
           <ColorPicker

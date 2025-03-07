@@ -18,6 +18,7 @@ export const useWhiteboardState = (initialData?: any, onDataUpdate?: (data: any)
   const [lastX, setLastX] = useState<number>(0);
   const [lastY, setLastY] = useState<number>(0);
   const [saveStatus, setSaveStatus] = useState<string>('');
+  const [imageUrl, setImageUrl] = useState<string>('');
 
   const ctx = useRef<CanvasRenderingContext2D | null>(null);
 
@@ -93,6 +94,8 @@ export const useWhiteboardState = (initialData?: any, onDataUpdate?: (data: any)
           drawLine(ctx.current!, instruction.x1, instruction.y1, instruction.x2, instruction.y2, instruction.color);
         } else if (instruction.type === 'arrow') {
           drawArrow(ctx.current!, instruction.x1, instruction.y1, instruction.x2, instruction.y2, instruction.color);
+        } else if (instruction.type === 'image' && instruction.url) {
+          drawImageFromUrl(instruction.url, instruction.x, instruction.y, instruction.width, instruction.height);
         }
       });
     }
@@ -100,6 +103,23 @@ export const useWhiteboardState = (initialData?: any, onDataUpdate?: (data: any)
     // Save the new state to history
     saveToHistory();
   }, [initialData, brushSize]);
+
+  // Draw image from URL
+  const drawImageFromUrl = (url: string, x: number, y: number, width: number, height: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas || !ctx.current) return;
+    
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      ctx.current?.drawImage(img, x, y, width || img.width, height || img.height);
+      saveToHistory();
+    };
+    img.onerror = () => {
+      console.error('Error loading image:', url);
+    };
+    img.src = url;
+  };
 
   // Save current state to history
   const saveToHistory = () => {
@@ -124,6 +144,75 @@ export const useWhiteboardState = (initialData?: any, onDataUpdate?: (data: any)
         imageData: canvas.toDataURL()
       };
       onDataUpdate(dataToSave);
+    }
+  };
+
+  // Generate AI drawing based on prompt
+  const generateAIDrawing = async (prompt: string) => {
+    if (!user) {
+      toast.error("You need to be logged in to use AI drawing");
+      return;
+    }
+    
+    try {
+      toast.info("Generating drawing based on your prompt...");
+      
+      // Create a prompt for Gemini that asks for drawing instructions
+      const aiPrompt = `Create drawing instructions for a whiteboard visualization of: "${prompt}". 
+      Return ONLY a JSON array of drawing instructions without any other explanation. 
+      Each instruction should be an object with: type (circle, rect, line, arrow, text), 
+      coordinates (x, y for objects, x1, y1, x2, y2 for lines and arrows), 
+      and other properties like radius for circles, width/height for rectangles, text content for text.
+      Make sure the drawing uses the canvas dimensions of approximately 800x500 pixels.
+      Example format:
+      [
+        {"type": "circle", "x": 200, "y": 200, "radius": 50, "color": "#FF5733"},
+        {"type": "text", "x": 200, "y": 200, "text": "Earth", "color": "#000000"},
+        {"type": "arrow", "x1": 100, "y1": 300, "x2": 300, "y2": 100, "color": "#3366FF"}
+      ]`;
+      
+      const { text } = await import('@/services/geminiService').then(module => 
+        module.generateGeminiResponse(aiPrompt)
+      );
+      
+      // Extract the JSON array from the response
+      const jsonMatch = text.match(/\[\s*{.*}\s*\]/s);
+      if (!jsonMatch) {
+        throw new Error('No valid JSON found in the response');
+      }
+      
+      const instructions = JSON.parse(jsonMatch[0]);
+      
+      // Clear the canvas first
+      handleClear();
+      
+      // Apply each drawing instruction
+      if (Array.isArray(instructions) && instructions.length > 0) {
+        const canvas = canvasRef.current;
+        if (!canvas || !ctx.current) return;
+        
+        instructions.forEach(instruction => {
+          if (instruction.type === 'circle') {
+            drawCircle(ctx.current, instruction.x, instruction.y, instruction.radius, instruction.color);
+          } else if (instruction.type === 'rect') {
+            drawRectangle(ctx.current, instruction.x, instruction.y, instruction.width, instruction.height, instruction.color);
+          } else if (instruction.type === 'text') {
+            drawText(ctx.current, instruction.x, instruction.y, instruction.text, instruction.color, brushSize);
+          } else if (instruction.type === 'line') {
+            drawLine(ctx.current, instruction.x1, instruction.y1, instruction.x2, instruction.y2, instruction.color);
+          } else if (instruction.type === 'arrow') {
+            drawArrow(ctx.current, instruction.x1, instruction.y1, instruction.x2, instruction.y2, instruction.color);
+          }
+        });
+        
+        saveToHistory();
+        toast.success("Drawing generated successfully!");
+      } else {
+        throw new Error('No valid drawing instructions found');
+      }
+    } catch (error) {
+      console.error('Error generating AI drawing:', error);
+      toast.error("Failed to generate drawing. Please try again.");
     }
   };
 
@@ -194,6 +283,25 @@ export const useWhiteboardState = (initialData?: any, onDataUpdate?: (data: any)
     link.click();
   };
 
+  const handleAddImage = (url: string) => {
+    if (!url) return;
+    
+    setImageUrl('');
+    
+    // Calculate center of canvas
+    const canvas = canvasRef.current;
+    if (!canvas || !ctx.current) return;
+    
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    
+    // Default image size (can be adjusted)
+    const defaultWidth = 200;
+    const defaultHeight = 150;
+    
+    drawImageFromUrl(url, centerX - defaultWidth/2, centerY - defaultHeight/2, defaultWidth, defaultHeight);
+  };
+
   return {
     canvasRef,
     ctx,
@@ -215,14 +323,18 @@ export const useWhiteboardState = (initialData?: any, onDataUpdate?: (data: any)
     setLastY,
     saveStatus,
     readOnly,
+    imageUrl,
+    setImageUrl,
     handleUndo,
     handleRedo,
     handleClear,
     handleSave,
     handleDownload,
+    handleAddImage,
     saveToHistory,
     drawCircle,
     drawRectangle,
     drawText,
+    generateAIDrawing,
   };
 };
