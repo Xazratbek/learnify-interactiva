@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 import LessonContent from '@/components/lesson/LessonContent';
@@ -21,6 +21,22 @@ const Lesson = () => {
   const topic = searchParams.get('topic') || 'General Knowledge';
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'lesson' | 'chat' | 'whiteboard'>('lesson');
+  const [whiteboardData, setWhiteboardData] = useState<any[]>([]);
+  
+  // Handle drawing instructions from AI chat
+  const handleDrawingInstructions = useCallback((instructions: any[]) => {
+    setWhiteboardData(instructions);
+    toast.info(
+      "The AI tutor has created a visual explanation!", 
+      {
+        description: "Click the Whiteboard tab to view it",
+        action: {
+          label: "View",
+          onClick: () => setActiveTab('whiteboard')
+        }
+      }
+    );
+  }, []);
   
   useEffect(() => {
     // Show welcome toast when lesson loads
@@ -93,19 +109,29 @@ const Lesson = () => {
               
               <div className="md:hidden">
                 {activeTab === 'lesson' && <LessonContent topic={topic} />}
-                {activeTab === 'chat' && <AIChat topic={topic} />}
-                {activeTab === 'whiteboard' && <Whiteboard />}
+                {activeTab === 'chat' && <AIChat topic={topic} onDrawingInstructions={handleDrawingInstructions} />}
+                {activeTab === 'whiteboard' && <Whiteboard initialData={whiteboardData} />}
               </div>
               
               <div className="hidden md:block">
                 <LessonContent topic={topic} className={activeTab !== 'lesson' ? 'hidden' : ''} />
-                <AIChat topic={topic} className={activeTab !== 'chat' ? 'hidden' : ''} />
-                <Whiteboard className={activeTab !== 'whiteboard' ? 'hidden' : ''} />
+                <AIChat 
+                  topic={topic} 
+                  className={activeTab !== 'chat' ? 'hidden' : ''} 
+                  onDrawingInstructions={handleDrawingInstructions}
+                />
+                <Whiteboard 
+                  className={activeTab !== 'whiteboard' ? 'hidden' : ''} 
+                  initialData={whiteboardData}
+                />
               </div>
             </div>
             
             <div className="w-full md:w-1/3 hidden md:block">
-              <AIChat topic={topic} />
+              <AIChat 
+                topic={topic} 
+                onDrawingInstructions={handleDrawingInstructions}
+              />
             </div>
           </div>
         </div>

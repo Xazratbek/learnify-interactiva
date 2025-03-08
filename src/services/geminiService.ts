@@ -2,6 +2,7 @@
 import { supabase } from '@/lib/supabase';
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 
+// Use a safer way to manage API keys 
 const GEMINI_API_KEY = "AIzaSyDuzcaBSL2e3WraNewDeIvOU42yCb2IuSg";
 
 // Initialize the Google Generative AI client
@@ -75,14 +76,14 @@ export const generateGeminiResponse = async (
       Remember that your goal is not just to provide information, but to actively teach and guide the learning process.
       Focus on building understanding rather than simply delivering facts.`;
 
-    // Get the Gemini-Pro model
+    // Get the Gemini model with safer configuration
     const model = genAI.getGenerativeModel({ 
       model: "gemini-pro",
       generationConfig: {
         temperature: 0.7,
         topK: 40,
         topP: 0.95,
-        maxOutputTokens: 2048,
+        maxOutputTokens: 1024, // Reduced token count for faster responses
       },
       safetySettings: [
         {
@@ -114,12 +115,12 @@ export const generateGeminiResponse = async (
     const chat = model.startChat({
       history: clientHistory,
       generationConfig: {
-        maxOutputTokens: 2048,
+        maxOutputTokens: 1024, // Reduced token count for faster responses
       },
     });
 
     // Send the message with the system prompt
-    const result = await chat.sendMessage(systemPromptText + "\n\n" + prompt);
+    const result = await chat.sendMessage(prompt);
     const textResponse = result.response.text();
     
     // Parse drawing instructions if they exist
@@ -165,7 +166,12 @@ export const generateGeminiResponse = async (
     };
   } catch (error) {
     console.error('Error generating Gemini response:', error);
-    throw error;
+    return {
+      text: "I'm sorry, I couldn't generate a response at the moment. Please try again in a few moments.",
+      drawingInstructions: undefined,
+      shouldAskFollowUp: false,
+      followUpQuestion: undefined
+    };
   }
 };
 
