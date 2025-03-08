@@ -1,9 +1,9 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, RefObject, MutableRefObject } from 'react';
 
 export const useCanvas = (
-  canvasRef: React.RefObject<HTMLCanvasElement>,
-  ctx: React.MutableRefObject<CanvasRenderingContext2D | null>,
+  canvasRef: RefObject<HTMLCanvasElement>,
+  ctx: MutableRefObject<CanvasRenderingContext2D | null>,
   color: string,
   brushSize: number,
   saveToHistory: () => void
