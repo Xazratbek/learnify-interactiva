@@ -1,8 +1,11 @@
 
 import { supabase } from '@/lib/supabase';
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 
 const GEMINI_API_KEY = "AIzaSyDuzcaBSL2e3WraNewDeIvOU42yCb2IuSg";
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
+
+// Initialize the Google Generative AI client
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 export interface GeminiMessage {
   role: 'user' | 'model';
@@ -33,9 +36,7 @@ export const generateGeminiResponse = async (
     });
 
     // Prepare the system prompt to guide Gemini to act as an AI tutor
-    const systemPrompt = {
-      role: 'system',
-      parts: [{ text: `You are an AI learning tutor designed to help students understand various educational topics. 
+    const systemPromptText = `You are an AI learning tutor designed to help students understand various educational topics. 
       Your primary goal is to provide clear, helpful explanations and guide the learning process.
       
       As an AI tutor, you should:
@@ -72,42 +73,54 @@ export const generateGeminiResponse = async (
       [/FOLLOW_UP]
       
       Remember that your goal is not just to provide information, but to actively teach and guide the learning process.
-      Focus on building understanding rather than simply delivering facts.`
-      }]
-    };
+      Focus on building understanding rather than simply delivering facts.`;
 
-    // Construct the full prompt with system instructions
-    const messages = [
-      systemPrompt,
-      ...history
-    ];
-
-    // Make the API request to Gemini
-    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+    // Get the Gemini-Pro model
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-pro",
+      generationConfig: {
+        temperature: 0.7,
+        topK: 40,
+        topP: 0.95,
+        maxOutputTokens: 2048,
       },
-      body: JSON.stringify({
-        contents: messages,
-        generationConfig: {
-          temperature: 0.7,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 2048,
+      safetySettings: [
+        {
+          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+          threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
         },
-      }),
+        {
+          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+          threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+          threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+          threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        },
+      ],
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`Gemini API error: ${errorData.error?.message || response.statusText}`);
-    }
+    // Convert conversation history to client library format
+    const clientHistory = history.map(msg => ({
+      role: msg.role === 'user' ? 'user' : 'model',
+      parts: [{ text: msg.parts[0].text }]
+    }));
 
-    const data = await response.json();
-    
-    // Extract the text response
-    const textResponse = data.candidates[0]?.content?.parts[0]?.text || "I couldn't generate a response. Please try again.";
+    // Start a new chat session
+    const chat = model.startChat({
+      history: clientHistory,
+      generationConfig: {
+        maxOutputTokens: 2048,
+      },
+    });
+
+    // Send the message with the system prompt
+    const result = await chat.sendMessage(systemPromptText + "\n\n" + prompt);
+    const textResponse = result.response.text();
     
     // Parse drawing instructions if they exist
     let drawingInstructions = undefined;
