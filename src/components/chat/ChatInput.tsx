@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Send, Mic, MicOff } from 'lucide-react';
@@ -16,9 +16,10 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
   const [interimTranscript, setInterimTranscript] = useState('');
   const recognition = useRef<SpeechRecognition | null>(null);
   const finalTranscriptRef = useRef('');
+  const listeningTimeoutRef = useRef<number | null>(null);
 
   // Initialize speech recognition
-  React.useEffect(() => {
+  useEffect(() => {
     if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       recognition.current = new SpeechRecognition();
@@ -27,7 +28,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
       recognition.current.continuous = true;
       recognition.current.interimResults = true;
       recognition.current.lang = 'en-US';
-      recognition.current.maxAlternatives = 1;
+      recognition.current.maxAlternatives = 3;
       
       recognition.current.onresult = (event) => {
         let interim = '';
@@ -35,7 +36,12 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
         
         for (let i = event.resultIndex; i < event.results.length; i++) {
           if (event.results[i].isFinal) {
-            final += event.results[i][0].transcript;
+            // Get the most likely transcript from alternatives
+            const transcript = event.results[i][0].transcript;
+            
+            // Clean up transcript (remove duplicate words that often occur in speech recognition)
+            const cleanedTranscript = cleanTranscript(transcript);
+            final += ' ' + cleanedTranscript;
           } else {
             interim += event.results[i][0].transcript;
           }
@@ -43,18 +49,19 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
         
         // Update the final transcript
         if (final) {
-          finalTranscriptRef.current += ' ' + final;
-          finalTranscriptRef.current = finalTranscriptRef.current.trim();
+          finalTranscriptRef.current = (finalTranscriptRef.current + final).trim();
           setInputValue(finalTranscriptRef.current);
         }
         
         // Update interim results
         setInterimTranscript(interim);
+        
+        // Reset the auto-stop timeout when we get new results
+        resetListeningTimeout();
       };
       
       recognition.current.onend = () => {
-        // If we're still listening, restart recognition
-        // This helps with longer dictations
+        // If we're still listening (not manually stopped), restart recognition
         if (isListening) {
           recognition.current?.start();
         }
@@ -73,8 +80,43 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
       if (recognition.current) {
         recognition.current.stop();
       }
+      
+      if (listeningTimeoutRef.current) {
+        window.clearTimeout(listeningTimeoutRef.current);
+      }
     };
   }, [isListening]);
+
+  // Clean transcript to remove common speech recognition errors
+  const cleanTranscript = (transcript: string) => {
+    // Remove duplicate adjacent words (e.g., "hi hi how are you" -> "hi how are you")
+    const words = transcript.trim().split(' ');
+    const uniqueWords = words.filter((word, index) => {
+      if (index === 0) return true;
+      return word.toLowerCase() !== words[index - 1].toLowerCase();
+    });
+    
+    return uniqueWords.join(' ');
+  };
+
+  // Set a timeout to automatically stop listening if no speech is detected
+  const resetListeningTimeout = () => {
+    if (listeningTimeoutRef.current) {
+      window.clearTimeout(listeningTimeoutRef.current);
+    }
+    
+    listeningTimeoutRef.current = window.setTimeout(() => {
+      if (isListening && recognition.current) {
+        recognition.current.stop();
+        setIsListening(false);
+        
+        // Use the collected transcript as input
+        if (finalTranscriptRef.current) {
+          setInputValue(finalTranscriptRef.current);
+        }
+      }
+    }, 5000); // Auto-stop after 5 seconds of silence
+  };
 
   const toggleListening = () => {
     if (disabled) return;
@@ -92,6 +134,11 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
       if (finalTranscriptRef.current) {
         setInputValue(finalTranscriptRef.current);
       }
+      
+      if (listeningTimeoutRef.current) {
+        window.clearTimeout(listeningTimeoutRef.current);
+        listeningTimeoutRef.current = null;
+      }
     } else {
       // Reset the transcripts when starting a new recording
       setInputValue('');
@@ -100,6 +147,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
       
       recognition.current.start();
       setIsListening(true);
+      resetListeningTimeout();
     }
   };
 
@@ -117,6 +165,11 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
     if (isListening && recognition.current) {
       recognition.current.stop();
       setIsListening(false);
+      
+      if (listeningTimeoutRef.current) {
+        window.clearTimeout(listeningTimeoutRef.current);
+        listeningTimeoutRef.current = null;
+      }
     }
   };
 
@@ -129,6 +182,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
         onClick={toggleListening}
         className={isListening ? "bg-red-500 hover:bg-red-600" : ""}
         disabled={disabled}
+        title={isListening ? "Stop listening" : "Start voice input"}
       >
         {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
       </Button>

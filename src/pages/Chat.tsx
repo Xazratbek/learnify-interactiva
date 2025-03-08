@@ -31,7 +31,7 @@ const Chat = () => {
   useEffect(() => {
     const welcomeMessage: Message = {
       id: Date.now().toString(),
-      content: `Hello ${user?.email || 'there'}! I'm your AI learning assistant. What topic would you like to explore today?`,
+      content: `Hello ${user?.email || 'there'}! I'm your AI learning assistant. What topic would you like to explore today? You can ask me to teach you about any subject, like "Teach me web development basics" or "What happens when I type a URL in the browser?". I can also create visual explanations on the whiteboard.`,
       sender: 'ai',
       timestamp: new Date(),
     };
@@ -62,9 +62,19 @@ const Chat = () => {
     setIsAiThinking(true);
     
     try {
+      // Process common learning requests
+      const lowerMessage = messageContent.toLowerCase();
+      let enhancedPrompt = messageContent;
+      
+      if (lowerMessage.includes('teach me') || lowerMessage.includes('explain') || lowerMessage.includes('how does') || lowerMessage.includes('what is')) {
+        if (lowerMessage.includes('url') || lowerMessage.includes('browser') || lowerMessage.includes('web')) {
+          enhancedPrompt += " Please include a visual explanation with drawing instructions to illustrate the process.";
+        }
+      }
+      
       // Generate AI response using Gemini
       const geminiResponse = await generateGeminiResponse(
-        messageContent,
+        enhancedPrompt,
         geminiHistory
       );
       
@@ -90,7 +100,13 @@ const Chat = () => {
       // If there are drawing instructions, update whiteboard data and switch to it
       if (geminiResponse.drawingInstructions && geminiResponse.drawingInstructions.length > 0) {
         setWhiteboardData(geminiResponse.drawingInstructions);
-        setTimeout(() => setActiveTab("whiteboard"), 1000);
+        toast.info("Visual explanation created! Check the whiteboard tab to see it.", {
+          duration: 5000,
+          action: {
+            label: "View",
+            onClick: () => setActiveTab("whiteboard")
+          }
+        });
       }
       
       // Speak the AI response if text-to-speech is enabled
@@ -130,6 +146,7 @@ const Chat = () => {
 
   const handleWhiteboardDataUpdate = (newData: any) => {
     console.log("Updated whiteboard data:", newData);
+    setWhiteboardData(newData);
   };
 
   const handleViewWhiteboard = () => {
@@ -146,7 +163,7 @@ const Chat = () => {
         <div className="flex flex-col space-y-4">
           <h1 className="text-3xl font-bold tracking-tight">Interactive Learning Assistant</h1>
           <p className="text-muted-foreground">
-            Ask questions, get explanations, or explore new topics with your personal AI tutor. The AI can also create visual explanations on the whiteboard.
+            Ask questions, get explanations, or explore new topics with your personal AI tutor. You can request step-by-step lessons on any topic, and the AI can create visual explanations on the whiteboard.
           </p>
         </div>
         
