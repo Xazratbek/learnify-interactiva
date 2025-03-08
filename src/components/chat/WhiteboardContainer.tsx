@@ -1,10 +1,10 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, memo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Whiteboard from '@/components/lesson/WhiteboardInteractive';
 import { toast } from 'sonner';
-import { Download, Share } from 'lucide-react';
+import { Download } from 'lucide-react';
 
 interface WhiteboardContainerProps {
   whiteboardData: any;
@@ -13,7 +13,8 @@ interface WhiteboardContainerProps {
   lessonId?: string;
 }
 
-const WhiteboardContainer: React.FC<WhiteboardContainerProps> = ({
+// Memoize the component to prevent unnecessary re-renders
+const WhiteboardContainer: React.FC<WhiteboardContainerProps> = memo(({
   whiteboardData,
   onDataUpdate,
   onBackToChat,
@@ -22,45 +23,50 @@ const WhiteboardContainer: React.FC<WhiteboardContainerProps> = ({
   const [isWhiteboardReady, setIsWhiteboardReady] = useState(false);
   const [hasSavedData, setHasSavedData] = useState(false);
   
-  useEffect(() => {
-    // Verify whiteboard data format
-    if (whiteboardData) {
-      try {
-        if (Array.isArray(whiteboardData)) {
-          console.log("Loading whiteboard data:", whiteboardData);
-          setIsWhiteboardReady(true);
-          setHasSavedData(whiteboardData.length > 0);
-        } else {
-          console.warn("Whiteboard data is not in the expected format:", whiteboardData);
-          toast.warning("Whiteboard data format is not valid. Starting with a blank canvas.");
-          setIsWhiteboardReady(true);
-          setHasSavedData(false);
-        }
-      } catch (error) {
-        console.error("Error processing whiteboard data:", error);
-        toast.error("There was an issue loading the whiteboard data.");
-        setIsWhiteboardReady(true);
-        setHasSavedData(false);
-      }
-    } else {
-      // No data, but whiteboard should still work with a blank canvas
-      setIsWhiteboardReady(true);
-      setHasSavedData(false);
-    }
-  }, [whiteboardData]);
-  
-  const handleDataUpdate = (data: any) => {
+  // Use useCallback to prevent recreation of function on each render
+  const handleDataUpdate = useCallback((data: any) => {
     try {
-      console.log("Whiteboard data updated:", data);
       onDataUpdate(data);
       setHasSavedData(data && data.length > 0);
     } catch (error) {
       console.error("Error updating whiteboard data:", error);
       toast.error("Failed to update whiteboard data.");
     }
-  };
+  }, [onDataUpdate]);
 
-  const handleDownload = () => {
+  // Optimize the useEffect to be more efficient
+  useEffect(() => {
+    let mounted = true;
+    
+    // Verify whiteboard data format more efficiently
+    if (whiteboardData) {
+      if (Array.isArray(whiteboardData)) {
+        if (mounted) {
+          setIsWhiteboardReady(true);
+          setHasSavedData(whiteboardData.length > 0);
+        }
+      } else {
+        console.warn("Whiteboard data is not in the expected format:", whiteboardData);
+        if (mounted) {
+          toast.warning("Whiteboard data format is not valid. Starting with a blank canvas.");
+          setIsWhiteboardReady(true);
+          setHasSavedData(false);
+        }
+      }
+    } else {
+      if (mounted) {
+        setIsWhiteboardReady(true);
+        setHasSavedData(false);
+      }
+    }
+    
+    // Cleanup function to avoid memory leaks and prevent state updates on unmounted component
+    return () => {
+      mounted = false;
+    };
+  }, [whiteboardData]);
+  
+  const handleDownload = useCallback(() => {
     try {
       // Get canvas element
       const canvas = document.querySelector('canvas');
@@ -80,7 +86,7 @@ const WhiteboardContainer: React.FC<WhiteboardContainerProps> = ({
       console.error("Error downloading whiteboard:", error);
       toast.error("Failed to download whiteboard image");
     }
-  };
+  }, [lessonId]);
 
   return (
     <Card className="min-h-[70vh] flex flex-col">
@@ -126,6 +132,9 @@ const WhiteboardContainer: React.FC<WhiteboardContainerProps> = ({
       </CardContent>
     </Card>
   );
-};
+});
+
+// Add display name for debugging
+WhiteboardContainer.displayName = 'WhiteboardContainer';
 
 export default WhiteboardContainer;
