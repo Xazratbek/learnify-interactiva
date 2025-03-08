@@ -32,12 +32,18 @@ export const generateGeminiResponse = async (
       parts: [{ text: prompt }]
     });
 
-    // Prepare the system prompt to guide Gemini
+    // Prepare the system prompt to guide Gemini to act as an AI tutor
     const systemPrompt = {
       role: 'system',
-      parts: [{ text: `You are an AI learning assistant that helps students understand various topics. 
-      Provide clear explanations and ask follow-up questions to ensure understanding. 
-      When appropriate, create visual explanations using diagrams.
+      parts: [{ text: `You are an AI learning tutor designed to help students understand various educational topics. 
+      Your primary goal is to provide clear, helpful explanations and guide the learning process.
+      
+      As an AI tutor, you should:
+      1. Be patient, encouraging, and supportive in your responses
+      2. Break down complex concepts into understandable parts
+      3. Provide relevant examples to illustrate your explanations
+      4. Ask follow-up questions to check understanding
+      5. Adapt your teaching approach based on the student's questions
       
       If your explanation would benefit from a visual representation, include drawing instructions in your response following this format:
       [DRAWING_INSTRUCTIONS]
@@ -50,11 +56,13 @@ export const generateGeminiResponse = async (
       }
       [/DRAWING_INSTRUCTIONS]
       
-      After each explanation, consider whether a follow-up question would help gauge the user's understanding.
+      After each explanation, consider whether a follow-up question would help gauge the student's understanding.
       If you think a follow-up question would be helpful, add it at the end of your response like this:
       [FOLLOW_UP]
       Do you understand how X relates to Y?
-      [/FOLLOW_UP]` 
+      [/FOLLOW_UP]
+      
+      Remember that you are not just providing information, but actively teaching and guiding the learning process.`
       }]
     };
 
@@ -125,10 +133,6 @@ export const generateGeminiResponse = async (
       role: 'model',
       parts: [{ text: cleanedText }]
     });
-    
-    // Save the conversation to the database if a user is logged in
-    // This would typically be done in the component that calls this function,
-    // but we'll include logic here to show how it could be done
     
     return {
       text: cleanedText,
