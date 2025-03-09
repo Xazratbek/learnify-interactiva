@@ -1,4 +1,4 @@
-import { generateGeminiResponse } from './geminiService';
+import { generateGeminiResponse } from './gemini';
 
 export interface Topic {
   id: string;

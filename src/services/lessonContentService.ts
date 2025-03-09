@@ -1,5 +1,4 @@
-
-import { generateGeminiResponse } from './geminiService';
+import { generateGeminiResponse } from './gemini';
 
 /**
  * Function to get lesson content from AI

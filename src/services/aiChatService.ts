@@ -1,4 +1,5 @@
-import { generateGeminiResponse, GeminiMessage } from './geminiService';
+
+import { generateGeminiResponse, GeminiMessage } from './gemini';
 import { AIResponseWithDrawing, DrawingInstruction } from './aiResponseTypes';
 
 /**

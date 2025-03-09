@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, Bot, User, Loader2, Volume2, VolumeX } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { generateGeminiResponse, GeminiMessage } from '@/services/geminiService';
+import { generateGeminiResponse, GeminiMessage } from '@/services/gemini';
 import { toast } from 'sonner';
 
 interface Message {
