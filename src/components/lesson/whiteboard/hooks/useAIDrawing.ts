@@ -1,6 +1,7 @@
 
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { generateGeminiResponse } from '@/services/geminiService';
 
 export const useAIDrawing = (
   canvasRef: React.RefObject<HTMLCanvasElement>,
@@ -54,9 +55,7 @@ export const useAIDrawing = (
         {"type": "arrow", "x1": 100, "y1": 300, "x2": 300, "y2": 100, "color": "#3366FF"}
       ]`;
       
-      const { text } = await import('@/services/geminiService').then(module => 
-        module.generateGeminiResponse(aiPrompt)
-      );
+      const { text } = await generateGeminiResponse(aiPrompt);
       
       // Extract the JSON array from the response
       const jsonMatch = text.match(/\[\s*{.*}\s*\]/s);
