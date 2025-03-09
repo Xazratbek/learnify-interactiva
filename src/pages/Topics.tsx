@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
@@ -121,7 +120,6 @@ const TopicsPage: React.FC = () => {
     advanced: Topic[]
   }>({ beginner: [], intermediate: [], advanced: [] });
 
-  // Load topics on component mount
   useEffect(() => {
     const loadTopics = async () => {
       setIsLoading(true);
@@ -130,7 +128,6 @@ const TopicsPage: React.FC = () => {
         setTopics(suggestedTopics);
         setFilteredTopics(suggestedTopics);
         
-        // Group topics by difficulty
         setTopicsByDifficulty({
           beginner: suggestedTopics.filter(t => t.difficulty === 'beginner'),
           intermediate: suggestedTopics.filter(t => t.difficulty === 'intermediate'),
@@ -140,7 +137,6 @@ const TopicsPage: React.FC = () => {
         console.error('Error loading topics:', error);
         toast.error('Failed to load topics. Please try again.');
         
-        // Fallback to static data if API fails
         const staticTopics = getTopicsByDifficulty('all');
         setTopics(staticTopics);
         setFilteredTopics(staticTopics);
@@ -153,12 +149,10 @@ const TopicsPage: React.FC = () => {
     loadTopics();
   }, []);
 
-  // Handle search
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!searchQuery.trim()) {
-      // Reset to suggested topics if search is empty
       setFilteredTopics(topics);
       return;
     }
@@ -175,18 +169,15 @@ const TopicsPage: React.FC = () => {
     }
   };
 
-  // Filter topics based on category and difficulty
   useEffect(() => {
     let filtered = [...topics];
     
-    // Filter by category
     if (activeCategory !== 'All') {
       filtered = filtered.filter(topic => 
         topic.category.toLowerCase() === activeCategory.toLowerCase()
       );
     }
     
-    // Filter by difficulty
     if (activeDifficulty !== 'all') {
       filtered = filtered.filter(topic => 
         topic.difficulty === activeDifficulty
@@ -196,7 +187,6 @@ const TopicsPage: React.FC = () => {
     setFilteredTopics(filtered);
   }, [activeCategory, activeDifficulty, topics]);
 
-  // Start a lesson
   const handleStartLesson = (topic: string) => {
     navigate(`/lesson?topic=${encodeURIComponent(topic)}`);
   };
@@ -275,7 +265,6 @@ const TopicsPage: React.FC = () => {
                     variant={activeDifficulty === 'advanced' ? "default" : "outline"}
                     size="sm"
                     onClick={() => setActiveDifficulty('advanced')}
-                    className="w-full"
                     className="col-span-3"
                   >
                     <Trophy className="h-3 w-3 mr-1" />
