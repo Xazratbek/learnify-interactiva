@@ -8,21 +8,55 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Search, Filter, Book, PlayCircle, ChevronRight, Lightbulb, Atom, Calculator, Globe, Microscope, BookText, Music } from 'lucide-react';
+import { 
+  Search, 
+  Filter, 
+  Book, 
+  PlayCircle, 
+  ChevronRight, 
+  Lightbulb, 
+  Atom, 
+  Calculator, 
+  Globe, 
+  Microscope, 
+  BookText, 
+  Music, 
+  GraduationCap,
+  Star,
+  Trophy,
+  Code,
+  Beaker,
+  Palette,
+  Landmark
+} from 'lucide-react';
 import { toast } from 'sonner';
-import { getSuggestedTopics, searchTopics, Topic } from '@/services/topicService';
+import { getSuggestedTopics, searchTopics, Topic, getTopicsByDifficulty, getTopicsGroupedByDifficulty } from '@/services/topicService';
 
 const categories = [
   { name: 'All', icon: Book },
+  { name: 'Programming', icon: Code },
   { name: 'Physics', icon: Atom },
   { name: 'Mathematics', icon: Calculator },
-  { name: 'History', icon: Globe },
+  { name: 'History', icon: Landmark },
   { name: 'Biology', icon: Microscope },
+  { name: 'Chemistry', icon: Beaker },
   { name: 'Literature', icon: BookText },
+  { name: 'Art', icon: Palette },
   { name: 'Music', icon: Music },
 ];
 
-const TopicCard: React.FC<{ topic: Topic; onClick: () => void }> = ({ topic, onClick }) => {
+const difficultyIcons = {
+  beginner: Star,
+  intermediate: GraduationCap,
+  advanced: Trophy
+};
+
+interface TopicCardProps {
+  topic: Topic; 
+  onClick: () => void;
+}
+
+const TopicCard: React.FC<TopicCardProps> = ({ topic, onClick }) => {
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
       case 'beginner':
@@ -36,6 +70,8 @@ const TopicCard: React.FC<{ topic: Topic; onClick: () => void }> = ({ topic, onC
     }
   };
 
+  const DifficultyIcon = difficultyIcons[topic.difficulty as keyof typeof difficultyIcons] || Star;
+
   return (
     <Card className="h-full flex flex-col hover:shadow-md transition-shadow">
       <CardHeader className="pb-2">
@@ -47,6 +83,7 @@ const TopicCard: React.FC<{ topic: Topic; onClick: () => void }> = ({ topic, onC
             className={getDifficultyColor(topic.difficulty)}
             variant="secondary"
           >
+            <DifficultyIcon className="h-3 w-3 mr-1" />
             {topic.difficulty}
           </Badge>
         </div>
@@ -74,10 +111,15 @@ const TopicsPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
-  const [difficulty, setDifficulty] = useState('all');
+  const [activeDifficulty, setActiveDifficulty] = useState('all');
   const [topics, setTopics] = useState<Topic[]>([]);
   const [filteredTopics, setFilteredTopics] = useState<Topic[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [topicsByDifficulty, setTopicsByDifficulty] = useState<{
+    beginner: Topic[],
+    intermediate: Topic[],
+    advanced: Topic[]
+  }>({ beginner: [], intermediate: [], advanced: [] });
 
   // Load topics on component mount
   useEffect(() => {
@@ -87,9 +129,22 @@ const TopicsPage: React.FC = () => {
         const suggestedTopics = await getSuggestedTopics();
         setTopics(suggestedTopics);
         setFilteredTopics(suggestedTopics);
+        
+        // Group topics by difficulty
+        setTopicsByDifficulty({
+          beginner: suggestedTopics.filter(t => t.difficulty === 'beginner'),
+          intermediate: suggestedTopics.filter(t => t.difficulty === 'intermediate'),
+          advanced: suggestedTopics.filter(t => t.difficulty === 'advanced')
+        });
       } catch (error) {
         console.error('Error loading topics:', error);
         toast.error('Failed to load topics. Please try again.');
+        
+        // Fallback to static data if API fails
+        const staticTopics = getTopicsByDifficulty('all');
+        setTopics(staticTopics);
+        setFilteredTopics(staticTopics);
+        setTopicsByDifficulty(getTopicsGroupedByDifficulty());
       } finally {
         setIsLoading(false);
       }
@@ -132,14 +187,14 @@ const TopicsPage: React.FC = () => {
     }
     
     // Filter by difficulty
-    if (difficulty !== 'all') {
+    if (activeDifficulty !== 'all') {
       filtered = filtered.filter(topic => 
-        topic.difficulty === difficulty
+        topic.difficulty === activeDifficulty
       );
     }
     
     setFilteredTopics(filtered);
-  }, [activeCategory, difficulty, topics]);
+  }, [activeCategory, activeDifficulty, topics]);
 
   // Start a lesson
   const handleStartLesson = (topic: string) => {
@@ -165,8 +220,8 @@ const TopicsPage: React.FC = () => {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="md:col-span-3">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+          <div className="lg:col-span-3">
             <form onSubmit={handleSearch} className="flex w-full gap-2 mb-6">
               <Input
                 type="text"
@@ -182,21 +237,74 @@ const TopicsPage: React.FC = () => {
             </form>
           </div>
           
-          <div className="md:col-span-1">
-            <div className="flex items-center gap-2 font-medium text-sm mb-2">
-              <Filter className="h-4 w-4" />
-              Difficulty Filter
+          <div className="lg:col-span-1">
+            <div className="flex flex-col space-y-4">
+              <div>
+                <div className="flex items-center gap-2 font-medium text-sm mb-2">
+                  <Filter className="h-4 w-4" />
+                  Difficulty Level
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button 
+                    variant={activeDifficulty === 'all' ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setActiveDifficulty('all')}
+                    className="w-full"
+                  >
+                    All
+                  </Button>
+                  <Button 
+                    variant={activeDifficulty === 'beginner' ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setActiveDifficulty('beginner')}
+                    className="w-full"
+                  >
+                    <Star className="h-3 w-3 mr-1" />
+                    Beginner
+                  </Button>
+                  <Button 
+                    variant={activeDifficulty === 'intermediate' ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setActiveDifficulty('intermediate')}
+                    className="w-full"
+                  >
+                    <GraduationCap className="h-3 w-3 mr-1" />
+                    Inter.
+                  </Button>
+                  <Button 
+                    variant={activeDifficulty === 'advanced' ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setActiveDifficulty('advanced')}
+                    className="w-full"
+                    className="col-span-3"
+                  >
+                    <Trophy className="h-3 w-3 mr-1" />
+                    Advanced
+                  </Button>
+                </div>
+              </div>
+              
+              <div>
+                <div className="flex items-center gap-2 font-medium text-sm mb-2">
+                  <Book className="h-4 w-4" />
+                  Topic Counts
+                </div>
+                <div className="bg-muted rounded-md p-3 text-sm">
+                  <div className="flex justify-between mb-1">
+                    <span className="flex items-center"><Star className="h-3 w-3 mr-1 text-green-500" /> Beginner:</span>
+                    <span>{topicsByDifficulty.beginner.length}</span>
+                  </div>
+                  <div className="flex justify-between mb-1">
+                    <span className="flex items-center"><GraduationCap className="h-3 w-3 mr-1 text-blue-500" /> Intermediate:</span>
+                    <span>{topicsByDifficulty.intermediate.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="flex items-center"><Trophy className="h-3 w-3 mr-1 text-purple-500" /> Advanced:</span>
+                    <span>{topicsByDifficulty.advanced.length}</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <select 
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              value={difficulty}
-              onChange={(e) => setDifficulty(e.target.value)}
-            >
-              <option value="all">All Levels</option>
-              <option value="beginner">Beginner</option>
-              <option value="intermediate">Intermediate</option>
-              <option value="advanced">Advanced</option>
-            </select>
           </div>
         </div>
 
@@ -254,7 +362,7 @@ const TopicsPage: React.FC = () => {
                   onClick={() => {
                     setSearchQuery('');
                     setActiveCategory('All');
-                    setDifficulty('all');
+                    setActiveDifficulty('all');
                   }}
                 >
                   Clear Filters

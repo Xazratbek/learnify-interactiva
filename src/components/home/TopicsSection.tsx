@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { 
   AtomIcon, 
   BookText, 
@@ -17,32 +18,73 @@ import {
   Beaker,
   Landmark,
   BookOpen,
-  Palette
+  Palette,
+  GraduationCap,
+  Star,
+  Trophy
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Topic, getExpandedTopics } from '@/services/topicService';
+import { Topic, getExpandedTopics, getTopicsGroupedByDifficulty } from '@/services/topicService';
 
 interface TopicCardProps {
   icon: React.ReactNode;
   color: string;
   title: string;
   description: string;
+  difficulty: string;
   onClick: () => void;
 }
 
-const TopicCard: React.FC<TopicCardProps> = ({ icon, color, title, description, onClick }) => (
-  <div 
-    onClick={onClick}
-    className="group relative cursor-pointer glassmorphism rounded-xl p-6 transition-all duration-300 hover:shadow-md"
-  >
-    <div className={cn("mb-4 rounded-full p-3 w-fit", color)}>
-      {icon}
+const TopicCard: React.FC<TopicCardProps> = ({ icon, color, title, description, difficulty, onClick }) => {
+  const getDifficultyIcon = (level: string) => {
+    switch (level) {
+      case 'beginner':
+        return <Star className="h-3 w-3 mr-1" />;
+      case 'intermediate':
+        return <GraduationCap className="h-3 w-3 mr-1" />;
+      case 'advanced':
+        return <Trophy className="h-3 w-3 mr-1" />;
+      default:
+        return <Star className="h-3 w-3 mr-1" />;
+    }
+  };
+
+  const getDifficultyColor = (level: string) => {
+    switch (level) {
+      case 'beginner':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'intermediate':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'advanced':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200';
+    }
+  };
+
+  return (
+    <div 
+      onClick={onClick}
+      className="group relative cursor-pointer glassmorphism rounded-xl p-6 transition-all duration-300 hover:shadow-md"
+    >
+      <div className="flex justify-between items-start mb-4">
+        <div className={cn("rounded-full p-3 w-fit", color)}>
+          {icon}
+        </div>
+        <Badge
+          className={getDifficultyColor(difficulty)}
+          variant="secondary"
+        >
+          {getDifficultyIcon(difficulty)}
+          {difficulty}
+        </Badge>
+      </div>
+      <h3 className="text-lg font-semibold mb-2 group-hover:text-primary transition-colors">{title}</h3>
+      <p className="text-foreground/80 text-sm mb-4">{description}</p>
+      <ChevronRight className="absolute bottom-6 right-6 h-5 w-5 text-foreground/30 group-hover:text-primary group-hover:translate-x-1 transition-all" />
     </div>
-    <h3 className="text-lg font-semibold mb-2 group-hover:text-primary transition-colors">{title}</h3>
-    <p className="text-foreground/80 text-sm mb-4">{description}</p>
-    <ChevronRight className="absolute bottom-6 right-6 h-5 w-5 text-foreground/30 group-hover:text-primary group-hover:translate-x-1 transition-all" />
-  </div>
-);
+  );
+};
 
 interface CategoryToIconMap {
   [key: string]: {
@@ -56,13 +98,20 @@ const TopicsSection: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [allTopics, setAllTopics] = useState<Topic[]>([]);
   const [activeCategory, setActiveCategory] = useState('featured');
+  const [activeDifficulty, setActiveDifficulty] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
+  const [topicsByDifficulty, setTopicsByDifficulty] = useState<{
+    beginner: Topic[],
+    intermediate: Topic[],
+    advanced: Topic[]
+  }>({ beginner: [], intermediate: [], advanced: [] });
   
   useEffect(() => {
     // Load expanded topics
     setIsLoading(true);
     const topics = getExpandedTopics();
     setAllTopics(topics);
+    setTopicsByDifficulty(getTopicsGroupedByDifficulty());
     setIsLoading(false);
   }, []);
   
@@ -124,13 +173,25 @@ const TopicsSection: React.FC = () => {
     },
   };
   
-  // Helper function to get topics by category
-  const getTopicsByCategory = (category: string) => {
-    if (category === 'featured') {
-      // Return a selection of topics from different categories
-      return allTopics.filter((_, index) => index % 10 === 0).slice(0, 6);
+  // Helper function to get topics by category and difficulty
+  const getFilteredTopics = () => {
+    let filteredTopics = allTopics;
+    
+    // Filter by category if not featured
+    if (activeCategory !== 'featured') {
+      filteredTopics = filteredTopics.filter(topic => topic.category === activeCategory);
+    } else {
+      // For featured, get a selection of topics from different categories
+      filteredTopics = allTopics.filter((_, index) => index % 10 === 0).slice(0, 6);
     }
-    return allTopics.filter(topic => topic.category === category);
+    
+    // Filter by difficulty if not all
+    if (activeDifficulty !== 'all') {
+      filteredTopics = filteredTopics.filter(topic => topic.difficulty === activeDifficulty);
+    }
+    
+    // Limit to 6 topics for display
+    return filteredTopics.slice(0, 6);
   };
   
   // Helper to get icon for a specific topic
@@ -190,6 +251,44 @@ const TopicsSection: React.FC = () => {
             </Button>
           </form>
           
+          <div className="flex flex-wrap gap-2 justify-center mb-6">
+            <Button 
+              variant={activeDifficulty === 'all' ? "default" : "outline"}
+              size="sm"
+              onClick={() => setActiveDifficulty('all')}
+              className="flex items-center gap-1"
+            >
+              All Levels
+            </Button>
+            <Button 
+              variant={activeDifficulty === 'beginner' ? "default" : "outline"}
+              size="sm"
+              onClick={() => setActiveDifficulty('beginner')}
+              className="flex items-center gap-1"
+            >
+              <Star className="h-3 w-3" />
+              Beginner
+            </Button>
+            <Button 
+              variant={activeDifficulty === 'intermediate' ? "default" : "outline"}
+              size="sm"
+              onClick={() => setActiveDifficulty('intermediate')}
+              className="flex items-center gap-1"
+            >
+              <GraduationCap className="h-3 w-3" />
+              Intermediate
+            </Button>
+            <Button 
+              variant={activeDifficulty === 'advanced' ? "default" : "outline"}
+              size="sm"
+              onClick={() => setActiveDifficulty('advanced')}
+              className="flex items-center gap-1"
+            >
+              <Trophy className="h-3 w-3" />
+              Advanced
+            </Button>
+          </div>
+          
           <Tabs
             defaultValue="featured"
             value={activeCategory}
@@ -205,33 +304,32 @@ const TopicsSection: React.FC = () => {
               ))}
             </TabsList>
             
-            {categories.map((category) => (
-              <TabsContent key={category} value={category} className="mt-0">
-                {isLoading ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[1, 2, 3, 4, 5, 6].map((item) => (
-                      <div key={item} className="h-64 rounded-xl animate-pulse bg-muted" />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {getTopicsByCategory(category).map((topic) => {
-                      const { icon, color } = getIconForTopic(topic);
-                      return (
-                        <TopicCard
-                          key={topic.id}
-                          icon={icon}
-                          color={color}
-                          title={topic.title}
-                          description={topic.description}
-                          onClick={() => handleTopicClick(topic.title)}
-                        />
-                      );
-                    })}
-                  </div>
-                )}
-              </TabsContent>
-            ))}
+            <div className="mt-0">
+              {isLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[1, 2, 3, 4, 5, 6].map((item) => (
+                    <div key={item} className="h-64 rounded-xl animate-pulse bg-muted" />
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {getFilteredTopics().map((topic) => {
+                    const { icon, color } = getIconForTopic(topic);
+                    return (
+                      <TopicCard
+                        key={topic.id}
+                        icon={icon}
+                        color={color}
+                        title={topic.title}
+                        description={topic.description}
+                        difficulty={topic.difficulty}
+                        onClick={() => handleTopicClick(topic.title)}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </Tabs>
         </div>
         
@@ -250,21 +348,5 @@ const TopicsSection: React.FC = () => {
     </section>
   );
 };
-
-// Add missing Star icon
-const Star = ({ className }: { className?: string }) => (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="2" 
-    strokeLinecap="round" 
-    strokeLinejoin="round" 
-    className={className}
-  >
-    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-  </svg>
-);
 
 export default TopicsSection;
