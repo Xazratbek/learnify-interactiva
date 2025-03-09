@@ -1,4 +1,3 @@
-<lov-code>
 import { generateGeminiResponse } from './gemini';
 
 export interface Topic {
@@ -828,4 +827,8 @@ export const getExpandedTopics = (): Topic[] => {
       id: 'phys-b-4',
       title: 'Light and Color',
       description: 'Discover the physics of light and color. Learn about reflection, refraction, the visible spectrum, and how we perceive different colors.',
-      
+      category: 'Physics',
+      difficulty: 'beginner',
+    }
+  ];
+};
