@@ -1,4 +1,3 @@
-
 import React from 'react';
 import WhiteboardToolbar from './whiteboard/WhiteboardToolbar';
 import ColorPicker from './whiteboard/ColorPicker';
@@ -6,18 +5,20 @@ import WhiteboardCanvas from './whiteboard/WhiteboardCanvas';
 import { useWhiteboardState } from './whiteboard/useWhiteboardState';
 import { drawCircle, drawRectangle, drawText } from './whiteboard/drawingUtils';
 
-interface WhiteboardProps {
-  initialData?: any;
+export interface WhiteboardProps {
+  initialData?: any[];
   onDataUpdate?: (data: any) => void;
   readOnly?: boolean;
   lessonId?: string;
+  className?: string;
 }
 
 const WhiteboardInteractive: React.FC<WhiteboardProps> = ({ 
   initialData, 
   onDataUpdate,
   readOnly = false,
-  lessonId = 'default'
+  lessonId = 'default',
+  className
 }) => {
   const {
     canvasRef,
@@ -50,7 +51,6 @@ const WhiteboardInteractive: React.FC<WhiteboardProps> = ({
     generateAIDrawing,
   } = useWhiteboardState(initialData, onDataUpdate, readOnly, lessonId);
 
-  // Mouse event handlers
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (readOnly) return;
     
@@ -154,7 +154,7 @@ const WhiteboardInteractive: React.FC<WhiteboardProps> = ({
   };
 
   return (
-    <div className="flex flex-col w-full max-w-4xl">
+    <div className={`flex flex-col w-full max-w-4xl ${className || ''}`}>
       {!readOnly && (
         <>
           <WhiteboardToolbar

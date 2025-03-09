@@ -1,4 +1,3 @@
-
 import { generateGeminiResponse } from './geminiService';
 
 export interface Topic {
@@ -70,10 +69,8 @@ export const getSuggestedTopics = async (): Promise<Topic[]> => {
   }
 };
 
-// Expanded topics organized by categories
-const getExpandedTopics = (): Topic[] => {
+export const getExpandedTopics = (): Topic[] => {
   return [
-    // Programming Topics
     {
       id: 'prog-1',
       title: 'Introduction to Python Programming',
@@ -145,7 +142,6 @@ const getExpandedTopics = (): Topic[] => {
       difficulty: 'intermediate',
     },
     
-    // Physics Topics
     {
       id: 'phys-1',
       title: 'Classical Mechanics',
@@ -217,7 +213,6 @@ const getExpandedTopics = (): Topic[] => {
       difficulty: 'beginner',
     },
     
-    // Mathematics Topics
     {
       id: 'math-1',
       title: 'Calculus Fundamentals',
@@ -289,7 +284,6 @@ const getExpandedTopics = (): Topic[] => {
       difficulty: 'intermediate',
     },
     
-    // History Topics
     {
       id: 'hist-1',
       title: 'Ancient Civilizations',
@@ -361,7 +355,6 @@ const getExpandedTopics = (): Topic[] => {
       difficulty: 'intermediate',
     },
     
-    // Biology Topics
     {
       id: 'bio-1',
       title: 'Cell Biology',
@@ -433,7 +426,6 @@ const getExpandedTopics = (): Topic[] => {
       difficulty: 'intermediate',
     },
     
-    // Chemistry Topics
     {
       id: 'chem-1',
       title: 'Periodic Table and Elements',
@@ -505,7 +497,6 @@ const getExpandedTopics = (): Topic[] => {
       difficulty: 'intermediate',
     },
     
-    // Literature and Arts Topics
     {
       id: 'lit-1',
       title: 'Introduction to Literary Analysis',
@@ -578,4 +569,3 @@ const getExpandedTopics = (): Topic[] => {
     },
   ];
 };
-

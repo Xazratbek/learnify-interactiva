@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -7,7 +6,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, Bot, User, Loader2, Volume2, VolumeX } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { generateGeminiResponse } from '@/services/geminiService';
+import { generateGeminiResponse, GeminiMessage } from '@/services/geminiService';
 import { toast } from 'sonner';
 
 interface Message {
@@ -32,7 +31,6 @@ const AIChat: React.FC<AIChatProps> = ({ topic, className, onDrawingInstructions
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
   
-  // Initialize the chat with an AI greeting
   useEffect(() => {
     setIsLoading(true);
     
@@ -41,7 +39,6 @@ const AIChat: React.FC<AIChatProps> = ({ topic, className, onDrawingInstructions
     Mention 2-3 key aspects you'll cover and ask if they have any specific questions.
     If appropriate, create a simple visual diagram using drawing instructions.`;
 
-    // Generate the initial message from AI
     generateGeminiResponse(initialPrompt)
       .then(response => {
         const aiMessage: Message = {
@@ -53,14 +50,12 @@ const AIChat: React.FC<AIChatProps> = ({ topic, className, onDrawingInstructions
         
         setMessages([aiMessage]);
         
-        // If there are drawing instructions, send them to parent component
         if (response.drawingInstructions && onDrawingInstructions) {
           onDrawingInstructions(response.drawingInstructions);
         }
       })
       .catch(error => {
         console.error('Error generating initial message:', error);
-        // Fallback message if API fails
         setMessages([{
           role: 'assistant',
           content: `Welcome to your lesson on ${topic}! I'm your AI tutor, and I'm here to help you understand this topic step by step. What specific aspects of ${topic} would you like to explore today?`,
@@ -72,7 +67,6 @@ const AIChat: React.FC<AIChatProps> = ({ topic, className, onDrawingInstructions
       });
   }, [topic, onDrawingInstructions]);
   
-  // Auto-scroll to bottom when messages change
   useEffect(() => {
     if (scrollAreaRef.current) {
       setTimeout(() => {
@@ -83,18 +77,14 @@ const AIChat: React.FC<AIChatProps> = ({ topic, className, onDrawingInstructions
     }
   }, [messages]);
   
-  // Text-to-speech functionality
   const speak = (text: string) => {
     if (isMuted || !text) return;
     
-    // Stop any current speech
     window.speechSynthesis.cancel();
     
-    // Create new utterance
     const utterance = new SpeechSynthesisUtterance(text);
     speechSynthesisRef.current = utterance;
     
-    // Configure voice
     const voices = window.speechSynthesis.getVoices();
     const preferredVoice = voices.find(voice => 
       voice.lang.includes('en-US') && voice.name.includes('Female')
@@ -107,16 +97,13 @@ const AIChat: React.FC<AIChatProps> = ({ topic, className, onDrawingInstructions
     utterance.rate = 1.0;
     utterance.pitch = 1.0;
     
-    // Set event handlers
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);
     
-    // Start speaking
     window.speechSynthesis.speak(utterance);
   };
   
-  // Toggle mute state
   const toggleMute = () => {
     if (!isMuted) {
       window.speechSynthesis.cancel();
@@ -130,7 +117,6 @@ const AIChat: React.FC<AIChatProps> = ({ topic, className, onDrawingInstructions
     
     if (!inputValue.trim() || isLoading) return;
     
-    // Add user message
     const userMessage: Message = {
       role: 'user',
       content: inputValue,
@@ -142,13 +128,11 @@ const AIChat: React.FC<AIChatProps> = ({ topic, className, onDrawingInstructions
     setIsLoading(true);
     
     try {
-      // Construct context for the AI
-      const historyContext = messages.map(msg => ({
+      const historyContext: GeminiMessage[] = messages.map(msg => ({
         role: msg.role === 'user' ? 'user' : 'model',
         parts: [{ text: msg.content }]
       }));
       
-      // Generate AI response with the current topic context
       const promptWithContext = `The student is asking about ${topic}: "${inputValue}"
       Remember you're in the middle of teaching them about ${topic}.
       Respond directly to their question in a helpful, educational way.
@@ -165,19 +149,16 @@ const AIChat: React.FC<AIChatProps> = ({ topic, className, onDrawingInstructions
       
       setMessages((prev) => [...prev, aiMessage]);
       
-      // If there are drawing instructions, send them to parent component
       if (response.drawingInstructions && onDrawingInstructions) {
         onDrawingInstructions(response.drawingInstructions);
         toast.info("Visual explanation created! Check the whiteboard tab to see it.");
       }
       
-      // Speak the response if not muted
       speak(response.text);
     } catch (error) {
       console.error('Error generating AI response:', error);
       toast.error("Failed to get AI response. Please try again.");
       
-      // Add fallback response
       setMessages((prev) => [...prev, {
         role: 'assistant',
         content: "I'm sorry, I couldn't process your request right now. Please try asking again or rephrase your question.",
