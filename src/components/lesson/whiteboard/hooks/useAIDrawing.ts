@@ -1,7 +1,7 @@
 
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
-import { generateGeminiResponse } from '@/services/geminiService';
+import { generateGeminiResponse } from '@/services/gemini';
 
 export const useAIDrawing = (
   canvasRef: React.RefObject<HTMLCanvasElement>,

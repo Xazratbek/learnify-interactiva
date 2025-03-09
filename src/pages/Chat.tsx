@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -7,7 +6,7 @@ import { toast } from 'sonner';
 import ChatContainer from '@/components/chat/ChatContainer';
 import WhiteboardContainer from '@/components/chat/WhiteboardContainer';
 import { useTextToSpeech } from '@/components/chat/useTextToSpeech';
-import { generateGeminiResponse, GeminiMessage } from '@/services/geminiService';
+import { generateGeminiResponse, GeminiMessage } from '@/services/gemini';
 
 interface Message {
   id: string;
