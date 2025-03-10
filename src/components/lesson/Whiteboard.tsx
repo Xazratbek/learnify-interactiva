@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import WhiteboardInteractive from './WhiteboardInteractive';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,15 +13,28 @@ interface WhiteboardProps {
 
 const Whiteboard: React.FC<WhiteboardProps> = ({ className, initialData, currentTopic }) => {
   const { user } = useAuth();
-  const { data, loading, updateData } = useWhiteboardData();
+  // Extract the lesson ID from topic or use a default value
+  const lessonId = currentTopic ? currentTopic.replace(/\s+/g, '-').toLowerCase() : 'default';
   
-  // Use initialData if provided, otherwise use saved data
-  const whiteboardData = initialData || data;
+  // Use the updated useWhiteboardData hook with the lessonId
+  const { whiteboard, loading, fetchWhiteboardData, saveWhiteboardData } = useWhiteboardData(lessonId);
+  
+  // Fetch whiteboard data when component mounts
+  useEffect(() => {
+    if (user && !initialData) {
+      fetchWhiteboardData();
+    }
+  }, [user, lessonId, initialData, fetchWhiteboardData]);
+  
+  // Use initialData if provided, otherwise use saved whiteboard data
+  const whiteboardData = initialData || (whiteboard ? whiteboard.drawing_data : null);
   
   // Handle whiteboard updates
   const handleWhiteboardUpdate = (newData: any) => {
     if (user) {
-      updateData(newData);
+      // Parse drawing data to store or get image data directly
+      const drawingData = typeof newData === 'object' ? newData.imageData : newData;
+      saveWhiteboardData(drawingData);
     }
   };
   
@@ -37,6 +50,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ className, initialData, current
             initialData={whiteboardData} 
             onDataUpdate={handleWhiteboardUpdate}
             currentTopic={currentTopic}
+            lessonId={lessonId}
           />
         )}
       </CardContent>
