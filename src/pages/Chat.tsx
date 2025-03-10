@@ -59,7 +59,7 @@ const Chat = () => {
       setMessages([welcomeMessage]);
       setGeminiHistory([
         {
-          role: 'model',
+          role: 'model' as const,
           parts: [{ text: welcomeMessage.content }]
         }
       ]);
@@ -127,7 +127,7 @@ const Chat = () => {
       
       // Rebuild Gemini history from the messages
       const newGeminiHistory: GeminiMessage[] = selectedChat.messages.map(msg => ({
-        role: msg.sender === 'user' ? 'user' : 'model',
+        role: msg.sender === 'user' ? 'user' as const : 'model' as const,
         parts: [{ text: msg.content }]
       }));
       
@@ -136,7 +136,7 @@ const Chat = () => {
       setCurrentChatTitle(selectedChat.title);
       
       // Load whiteboard data if any exists
-      const lastDrawingMsg = selectedChat.messages.findLast(msg => msg.drawingInstructions && msg.drawingInstructions.length > 0);
+      const lastDrawingMsg = selectedChat.messages.find(msg => msg.drawingInstructions && msg.drawingInstructions.length > 0);
       if (lastDrawingMsg?.drawingInstructions) {
         setWhiteboardData(lastDrawingMsg.drawingInstructions);
       }
@@ -177,9 +177,9 @@ const Chat = () => {
       }
       
       // Generate AI response using Gemini
-      const updatedHistory = [
+      const updatedHistory: GeminiMessage[] = [
         ...geminiHistory,
-        { role: 'user', parts: [{ text: messageContent }] }
+        { role: 'user' as const, parts: [{ text: messageContent }] }
       ];
       
       const geminiResponse = await generateGeminiResponse(
@@ -201,9 +201,9 @@ const Chat = () => {
       setMessages(finalMessages);
       
       // Update Gemini conversation history
-      const finalHistory = [
+      const finalHistory: GeminiMessage[] = [
         ...updatedHistory,
-        { role: 'model', parts: [{ text: geminiResponse.text }] }
+        { role: 'model' as const, parts: [{ text: geminiResponse.text }] }
       ];
       setGeminiHistory(finalHistory);
       
@@ -244,9 +244,9 @@ const Chat = () => {
           const messagesWithFollowUp = [...finalMessages, followUpMessage];
           setMessages(messagesWithFollowUp);
           
-          const historyWithFollowUp = [
+          const historyWithFollowUp: GeminiMessage[] = [
             ...finalHistory,
-            { role: 'model', parts: [{ text: geminiResponse.followUpQuestion! }] }
+            { role: 'model' as const, parts: [{ text: geminiResponse.followUpQuestion! }] }
           ];
           setGeminiHistory(historyWithFollowUp);
           
