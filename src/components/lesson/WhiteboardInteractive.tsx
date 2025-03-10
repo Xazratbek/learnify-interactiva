@@ -1,3 +1,4 @@
+
 import React from 'react';
 import WhiteboardToolbar from './whiteboard/WhiteboardToolbar';
 import ColorPicker from './whiteboard/ColorPicker';
@@ -11,6 +12,7 @@ export interface WhiteboardProps {
   readOnly?: boolean;
   lessonId?: string;
   className?: string;
+  currentTopic?: string;
 }
 
 const WhiteboardInteractive: React.FC<WhiteboardProps> = ({ 
@@ -18,7 +20,8 @@ const WhiteboardInteractive: React.FC<WhiteboardProps> = ({
   onDataUpdate,
   readOnly = false,
   lessonId = 'default',
-  className
+  className,
+  currentTopic
 }) => {
   const {
     canvasRef,
@@ -173,7 +176,8 @@ const WhiteboardInteractive: React.FC<WhiteboardProps> = ({
             imageUrl={imageUrl}
             setImageUrl={setImageUrl}
             handleAddImage={handleAddImage}
-            generateAIDrawing={generateAIDrawing}
+            generateAIDrawing={(prompt) => generateAIDrawing(prompt, currentTopic)}
+            currentTopic={currentTopic}
           />
           
           <ColorPicker

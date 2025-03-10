@@ -25,7 +25,8 @@ interface WhiteboardToolbarProps {
   imageUrl?: string;
   setImageUrl?: (url: string) => void;
   handleAddImage?: (url: string) => void;
-  generateAIDrawing?: (prompt: string) => void;
+  generateAIDrawing?: (prompt: string, topicContext?: string) => Promise<any>;
+  currentTopic?: string;
 }
 
 const WhiteboardToolbar: React.FC<WhiteboardToolbarProps> = ({
@@ -44,7 +45,8 @@ const WhiteboardToolbar: React.FC<WhiteboardToolbarProps> = ({
   imageUrl = '',
   setImageUrl = () => {},
   handleAddImage = () => {},
-  generateAIDrawing = () => {},
+  generateAIDrawing = () => Promise.resolve(null),
+  currentTopic,
 }) => {
   return (
     <TooltipProvider>
@@ -76,6 +78,7 @@ const WhiteboardToolbar: React.FC<WhiteboardToolbarProps> = ({
           
           <AIDrawingDialog
             generateAIDrawing={generateAIDrawing}
+            currentTopic={currentTopic}
           />
           
           <ClearDialog

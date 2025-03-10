@@ -35,5 +35,5 @@ export const defaultSafetySettings = [
   },
 ];
 
-// Model name - updated to use gemini-1.5-flash
+// Model name - updated to use gemini-1.5-flash for better drawing capabilities
 export const GEMINI_MODEL = "gemini-1.5-flash";

@@ -2,6 +2,7 @@
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { generateGeminiResponse } from '@/services/gemini';
+import { DrawingInstruction } from '@/services/gemini/types';
 
 export const useAIDrawing = (
   canvasRef: React.RefObject<HTMLCanvasElement>,
@@ -12,27 +13,27 @@ export const useAIDrawing = (
 ) => {
   const { user } = useAuth();
   
-  const drawFromInstructions = (instructions: any[]) => {
+  const drawFromInstructions = (instructions: DrawingInstruction[]) => {
     if (!instructions || !Array.isArray(instructions) || !ctx.current) return;
     
     const { drawCircle, drawRectangle, drawText, drawLine, drawArrow } = require('../drawingUtils');
     
     instructions.forEach(instruction => {
       if (instruction.type === 'circle') {
-        drawCircle(ctx.current, instruction.x, instruction.y, instruction.radius, instruction.color);
-      } else if (instruction.type === 'rect') {
-        drawRectangle(ctx.current, instruction.x, instruction.y, instruction.width, instruction.height, instruction.color);
+        drawCircle(ctx.current, instruction.x, instruction.y, instruction.radius, instruction.color || '#000000');
+      } else if (instruction.type === 'rect' || instruction.type === 'rectangle') {
+        drawRectangle(ctx.current, instruction.x, instruction.y, instruction.width, instruction.height, instruction.color || '#000000');
       } else if (instruction.type === 'text') {
-        drawText(ctx.current, instruction.x, instruction.y, instruction.text, instruction.color, brushSize);
+        drawText(ctx.current, instruction.x, instruction.y, instruction.text || '', instruction.color || '#000000', brushSize);
       } else if (instruction.type === 'line') {
-        drawLine(ctx.current, instruction.x1, instruction.y1, instruction.x2, instruction.y2, instruction.color);
+        drawLine(ctx.current, instruction.x1 || 0, instruction.y1 || 0, instruction.x2 || 0, instruction.y2 || 0, instruction.color || '#000000');
       } else if (instruction.type === 'arrow') {
-        drawArrow(ctx.current, instruction.x1, instruction.y1, instruction.x2, instruction.y2, instruction.color);
+        drawArrow(ctx.current, instruction.x1 || 0, instruction.y1 || 0, instruction.x2 || 0, instruction.y2 || 0, instruction.color || '#000000');
       }
     });
   };
 
-  const generateAIDrawing = async (prompt: string) => {
+  const generateAIDrawing = async (prompt: string, topicContext?: string) => {
     if (!user) {
       toast.error("You need to be logged in to use AI drawing");
       return;
@@ -42,12 +43,24 @@ export const useAIDrawing = (
       toast.info("Generating drawing based on your prompt...");
       
       // Create a prompt for Gemini that asks for drawing instructions
-      const aiPrompt = `Create drawing instructions for a whiteboard visualization of: "${prompt}". 
-      Return ONLY a JSON array of drawing instructions without any other explanation. 
-      Each instruction should be an object with: type (circle, rect, line, arrow, text), 
-      coordinates (x, y for objects, x1, y1, x2, y2 for lines and arrows), 
-      and other properties like radius for circles, width/height for rectangles, text content for text.
-      Make sure the drawing uses the canvas dimensions of approximately 800x500 pixels.
+      let aiPrompt = `Create drawing instructions for a whiteboard visualization of: "${prompt}".\n`;
+      
+      // Add topic context if provided
+      if (topicContext) {
+        aiPrompt += `The current topic being discussed is: "${topicContext}".\n`;
+      }
+      
+      aiPrompt += `Return a JSON array of drawing instructions without any text explanations around it.
+      Each instruction should be an object with: 
+      - "type" (circle, rect, line, arrow, text)
+      - coordinates (x, y for objects, x1, y1, x2, y2 for lines and arrows)
+      - other properties like radius for circles, width/height for rectangles, text content for text elements
+      - "color" property for each element
+
+      Make the drawing well-organized, educational, and visually clear.
+      Use the canvas dimensions of approximately 800x500 pixels.
+      Be sure to include labels and annotations where appropriate.
+      
       Example format:
       [
         {"type": "circle", "x": 200, "y": 200, "radius": 50, "color": "#FF5733"},
@@ -55,15 +68,8 @@ export const useAIDrawing = (
         {"type": "arrow", "x1": 100, "y1": 300, "x2": 300, "y2": 100, "color": "#3366FF"}
       ]`;
       
-      const { text } = await generateGeminiResponse(aiPrompt);
-      
-      // Extract the JSON array from the response
-      const jsonMatch = text.match(/\[\s*{.*}\s*\]/s);
-      if (!jsonMatch) {
-        throw new Error('No valid JSON found in the response');
-      }
-      
-      const instructions = JSON.parse(jsonMatch[0]);
+      const response = await generateGeminiResponse(aiPrompt);
+      const instructions = response.drawingInstructions;
       
       // Clear the canvas first
       handleClear();
@@ -73,12 +79,30 @@ export const useAIDrawing = (
         drawFromInstructions(instructions);
         saveToHistory();
         toast.success("Drawing generated successfully!");
+        return instructions;
       } else {
-        throw new Error('No valid drawing instructions found');
+        const jsonMatch = response.text.match(/\[\s*\{.+\}\s*\]/s);
+        if (jsonMatch) {
+          try {
+            const parsedInstructions = JSON.parse(jsonMatch[0]);
+            if (Array.isArray(parsedInstructions) && parsedInstructions.length > 0) {
+              drawFromInstructions(parsedInstructions);
+              saveToHistory();
+              toast.success("Drawing generated successfully!");
+              return parsedInstructions;
+            }
+          } catch (e) {
+            console.error('Failed to parse instructions from text:', e);
+            throw new Error('No valid drawing instructions found');
+          }
+        } else {
+          throw new Error('No valid drawing instructions found');
+        }
       }
     } catch (error) {
       console.error('Error generating AI drawing:', error);
       toast.error("Failed to generate drawing. Please try again.");
+      return null;
     }
   };
 

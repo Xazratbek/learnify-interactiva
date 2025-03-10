@@ -110,7 +110,7 @@ const Lesson = () => {
               <div className="md:hidden">
                 {activeTab === 'lesson' && <LessonContent topic={topic} />}
                 {activeTab === 'chat' && <AIChat topic={topic} onDrawingInstructions={handleDrawingInstructions} />}
-                {activeTab === 'whiteboard' && <Whiteboard />}
+                {activeTab === 'whiteboard' && <Whiteboard initialData={whiteboardData} currentTopic={topic} />}
               </div>
               
               <div className="hidden md:block">
@@ -122,6 +122,8 @@ const Lesson = () => {
                 />
                 <Whiteboard 
                   className={activeTab !== 'whiteboard' ? 'hidden' : ''} 
+                  initialData={whiteboardData}
+                  currentTopic={topic}
                 />
               </div>
             </div>

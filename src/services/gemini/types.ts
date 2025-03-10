@@ -10,7 +10,7 @@ export interface GeminiMessage {
 // Response type from the Gemini service
 export interface GeminiResponse {
   text: string;
-  drawingInstructions?: any[];
+  drawingInstructions?: DrawingInstruction[];
   shouldAskFollowUp?: boolean;
   followUpQuestion?: string;
 }
