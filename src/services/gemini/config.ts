@@ -1,8 +1,8 @@
 
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 
-// Use a safer way to manage API keys 
-const GEMINI_API_KEY = "AIzaSyDuzcaBSL2e3WraNewDeIvOU42yCb2IuSg";
+// API Key
+const GEMINI_API_KEY = "AIzaSyCdQfIkr8a9V14Bw-_iCViAZZk7O8Z3Vp8";
 
 // Initialize the Google Generative AI client
 export const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -34,3 +34,6 @@ export const defaultSafetySettings = [
     threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
   },
 ];
+
+// Model name - updated to use gemini-1.5-flash
+export const GEMINI_MODEL = "gemini-1.5-flash";

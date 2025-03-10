@@ -6,9 +6,14 @@ import { getAllTopics, getTopicsByDifficulty, getTopicsGroupedByDifficulty } fro
 // Search for topics using the Gemini AI model
 export const searchTopics = async (query: string): Promise<Topic[]> => {
   try {
+    const systemMessage = {
+      role: 'user' as const,
+      parts: [{ text: "You are an educational content specialist. Generate accurate, diverse, and engaging educational topics when requested. Include appropriate difficulty levels, clear descriptions, and accurate categorization. Always format responses as valid JSON when asked." }]
+    };
+    
     const prompt = `Generate 10 educational topics related to "${query}" in JSON format. Each topic should include id (unique string), title, description (2-3 sentences), category, and difficulty (beginner, intermediate, or advanced). Format the response as a valid JSON array of objects without any additional text or explanations.`;
     
-    const response = await generateGeminiResponse(prompt);
+    const response = await generateGeminiResponse(prompt, [systemMessage]);
     
     // Parse the JSON response
     const topicsText = response.text.trim();
@@ -37,9 +42,14 @@ export const searchTopics = async (query: string): Promise<Topic[]> => {
 // Get suggested topics using the Gemini AI model
 export const getSuggestedTopics = async (): Promise<Topic[]> => {
   try {
+    const systemMessage = {
+      role: 'user' as const,
+      parts: [{ text: "You are an educational content specialist. Generate diverse, balanced, and engaging educational topics across various fields and difficulty levels. Format responses as valid JSON when asked." }]
+    };
+    
     const prompt = `Generate 15 diverse educational topics for students in JSON format. Include 5 beginner, 5 intermediate, and 5 advanced topics from different fields like science, mathematics, humanities, arts, etc. Each topic should have id (unique string), title, description (2-3 sentences), category, and difficulty (beginner, intermediate, or advanced). Format the response as a valid JSON array of objects without any additional text or explanations.`;
     
-    const response = await generateGeminiResponse(prompt);
+    const response = await generateGeminiResponse(prompt, [systemMessage]);
     
     // Parse the JSON response
     const topicsText = response.text.trim();

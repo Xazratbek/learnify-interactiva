@@ -1,5 +1,5 @@
 
-import { genAI, defaultGenerationConfig, defaultSafetySettings } from './config';
+import { genAI, defaultGenerationConfig, defaultSafetySettings, GEMINI_MODEL } from './config';
 import { GeminiMessage, GeminiResponse } from './types';
 import { parseDrawingInstructions, parseFollowUpQuestion, cleanResponseText } from './parser';
 
@@ -14,34 +14,28 @@ export const generateGeminiResponse = async (
     // Create a copy of the history to avoid mutating the original
     const history = [...conversationHistory];
     
-    // Add the current prompt to history
-    history.push({
-      role: 'user',
-      parts: [{ text: prompt }]
-    });
-
-    // Get the Gemini model with safer configuration
+    // Get the Gemini model with configuration
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-pro",
+      model: GEMINI_MODEL,
       generationConfig: defaultGenerationConfig,
       safetySettings: defaultSafetySettings,
     });
 
     // Convert conversation history to client library format
     const clientHistory = history.map(msg => ({
-      role: msg.role === 'user' ? 'user' : 'model',
+      role: msg.role,
       parts: [{ text: msg.parts[0].text }]
     }));
 
-    // Start a new chat session
+    // Start a new chat session with history
     const chat = model.startChat({
       history: clientHistory,
       generationConfig: {
-        maxOutputTokens: 1024, // Reduced token count for faster responses
+        maxOutputTokens: 1024,
       },
     });
 
-    // Send the message with the system prompt
+    // Send the message
     const result = await chat.sendMessage(prompt);
     const textResponse = result.response.text();
     
@@ -53,12 +47,6 @@ export const generateGeminiResponse = async (
     
     // Clean up the text response
     const cleanedText = cleanResponseText(textResponse);
-    
-    // Add the response to history for context
-    history.push({
-      role: 'model',
-      parts: [{ text: cleanedText }]
-    });
     
     return {
       text: cleanedText,

@@ -25,6 +25,7 @@ interface AIChatProps {
 
 const AIChat: React.FC<AIChatProps> = ({ topic, className, onDrawingInstructions }) => {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [geminiHistory, setGeminiHistory] = useState<GeminiMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -40,7 +41,16 @@ const AIChat: React.FC<AIChatProps> = ({ topic, className, onDrawingInstructions
     Mention 2-3 key aspects you'll cover and ask if they have any specific questions.
     If appropriate, create a simple visual diagram using drawing instructions.`;
 
-    generateGeminiResponse(initialPrompt)
+    // Create system message
+    const systemMessage: GeminiMessage = {
+      role: 'user' as const,
+      parts: [{ text: "You are an AI tutor. Your goal is to help students learn by providing clear, engaging explanations. Use examples, analogies, and visualizations when helpful. Ask questions to check understanding. Be encouraging and supportive." }]
+    };
+    
+    // Initialize history with system message
+    setGeminiHistory([systemMessage]);
+
+    generateGeminiResponse(initialPrompt, [systemMessage])
       .then(response => {
         const aiMessage: Message = {
           role: 'assistant',
@@ -51,17 +61,37 @@ const AIChat: React.FC<AIChatProps> = ({ topic, className, onDrawingInstructions
         
         setMessages([aiMessage]);
         
+        // Update Gemini history
+        setGeminiHistory(prev => [
+          ...prev,
+          { 
+            role: 'model' as const, 
+            parts: [{ text: response.text }] 
+          }
+        ]);
+        
         if (response.drawingInstructions && onDrawingInstructions) {
           onDrawingInstructions(response.drawingInstructions);
         }
       })
       .catch(error => {
         console.error('Error generating initial message:', error);
+        const fallbackMessage = `Welcome to your lesson on ${topic}! I'm your AI tutor, and I'm here to help you understand this topic step by step. What specific aspects of ${topic} would you like to explore today?`;
+        
         setMessages([{
           role: 'assistant',
-          content: `Welcome to your lesson on ${topic}! I'm your AI tutor, and I'm here to help you understand this topic step by step. What specific aspects of ${topic} would you like to explore today?`,
+          content: fallbackMessage,
           timestamp: new Date()
         }]);
+        
+        // Update Gemini history with fallback message
+        setGeminiHistory(prev => [
+          ...prev,
+          { 
+            role: 'model' as const, 
+            parts: [{ text: fallbackMessage }] 
+          }
+        ]);
       })
       .finally(() => {
         setIsLoading(false);
@@ -129,17 +159,20 @@ const AIChat: React.FC<AIChatProps> = ({ topic, className, onDrawingInstructions
     setIsLoading(true);
     
     try {
-      const historyContext: GeminiMessage[] = messages.map(msg => ({
-        role: msg.role === 'user' ? 'user' : 'model',
-        parts: [{ text: msg.content }]
-      }));
+      // Add user message to history
+      const updatedHistory = [
+        ...geminiHistory,
+        { role: 'user' as const, parts: [{ text: inputValue }] }
+      ];
+      
+      setGeminiHistory(updatedHistory);
       
       const promptWithContext = `The student is asking about ${topic}: "${inputValue}"
       Remember you're in the middle of teaching them about ${topic}.
       Respond directly to their question in a helpful, educational way.
       If appropriate, include drawing instructions to visualize concepts.`;
       
-      const response = await generateGeminiResponse(promptWithContext, historyContext);
+      const response = await generateGeminiResponse(promptWithContext, updatedHistory);
       
       const aiMessage: Message = {
         role: 'assistant',
@@ -149,6 +182,14 @@ const AIChat: React.FC<AIChatProps> = ({ topic, className, onDrawingInstructions
       };
       
       setMessages((prev) => [...prev, aiMessage]);
+      
+      // Update Gemini history with AI response
+      const finalHistory = [
+        ...updatedHistory,
+        { role: 'model' as const, parts: [{ text: response.text }] }
+      ];
+      
+      setGeminiHistory(finalHistory);
       
       if (response.drawingInstructions && onDrawingInstructions) {
         onDrawingInstructions(response.drawingInstructions);
@@ -160,11 +201,19 @@ const AIChat: React.FC<AIChatProps> = ({ topic, className, onDrawingInstructions
       console.error('Error generating AI response:', error);
       toast.error("Failed to get AI response. Please try again.");
       
+      const errorMessage = "I'm sorry, I couldn't process your request right now. Please try asking again or rephrase your question.";
+      
       setMessages((prev) => [...prev, {
         role: 'assistant',
-        content: "I'm sorry, I couldn't process your request right now. Please try asking again or rephrase your question.",
+        content: errorMessage,
         timestamp: new Date()
       }]);
+      
+      // Update Gemini history with error message
+      setGeminiHistory(prev => [
+        ...prev,
+        { role: 'model' as const, parts: [{ text: errorMessage }] }
+      ]);
     } finally {
       setIsLoading(false);
     }
