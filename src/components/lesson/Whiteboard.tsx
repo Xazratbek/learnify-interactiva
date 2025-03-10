@@ -26,14 +26,42 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ className, initialData, current
     }
   }, [user, lessonId, initialData, fetchWhiteboardData]);
   
-  // Use initialData if provided, otherwise use saved whiteboard data
-  const whiteboardData = initialData || (whiteboard ? whiteboard.drawing_data : null);
+  // Process whiteboard data to ensure it's always an array
+  const processWhiteboardData = (): any[] => {
+    if (initialData) return initialData;
+    
+    if (!whiteboard || !whiteboard.drawing_data) return [];
+    
+    // If the data is already an array, use it
+    if (Array.isArray(whiteboard.drawing_data)) {
+      return whiteboard.drawing_data;
+    }
+    
+    // If it's a string, try to parse it as JSON
+    if (typeof whiteboard.drawing_data === 'string') {
+      try {
+        const parsed = JSON.parse(whiteboard.drawing_data);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        console.error('Error parsing whiteboard data:', e);
+        return [];
+      }
+    }
+    
+    // Default to empty array if we can't process the data
+    return [];
+  };
+  
+  const whiteboardData = processWhiteboardData();
   
   // Handle whiteboard updates
   const handleWhiteboardUpdate = (newData: any) => {
     if (user) {
       // Parse drawing data to store or get image data directly
-      const drawingData = typeof newData === 'object' ? newData.imageData : newData;
+      const drawingData = typeof newData === 'object' ? 
+        (Array.isArray(newData) ? JSON.stringify(newData) : newData.imageData) : 
+        newData;
+      
       saveWhiteboardData(drawingData);
     }
   };
