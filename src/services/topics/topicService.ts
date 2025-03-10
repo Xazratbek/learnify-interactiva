@@ -1,5 +1,6 @@
 
 import { generateGeminiResponse } from '../gemini';
+import { extractJsonFromResponse } from '../gemini/parser';
 import { Topic, TopicsByDifficulty } from './types';
 import { getAllTopics, getTopicsByDifficulty, getTopicsGroupedByDifficulty } from './allTopics';
 
@@ -15,13 +16,8 @@ export const searchTopics = async (query: string): Promise<Topic[]> => {
     
     const response = await generateGeminiResponse(prompt, [systemMessage]);
     
-    // Parse the JSON response
-    const topicsText = response.text.trim();
-    // Extract JSON if it's wrapped in markdown code blocks
-    const jsonMatch = topicsText.match(/```(?:json)?\s*([\s\S]*?)\s*```/) || [null, topicsText];
-    const jsonString = jsonMatch[1].trim();
-    
-    let topics = JSON.parse(jsonString);
+    // Parse the JSON response using the utility function
+    const topics = extractJsonFromResponse(response.text);
     
     // Ensure each topic has all required fields
     return topics.map((topic: any, index: number) => ({
@@ -51,13 +47,8 @@ export const getSuggestedTopics = async (): Promise<Topic[]> => {
     
     const response = await generateGeminiResponse(prompt, [systemMessage]);
     
-    // Parse the JSON response
-    const topicsText = response.text.trim();
-    // Extract JSON if it's wrapped in markdown code blocks
-    const jsonMatch = topicsText.match(/```(?:json)?\s*([\s\S]*?)\s*```/) || [null, topicsText];
-    const jsonString = jsonMatch[1].trim();
-    
-    let topics = JSON.parse(jsonString);
+    // Parse the JSON response using the utility function
+    const topics = extractJsonFromResponse(response.text);
     
     // Ensure each topic has all required fields
     return topics.map((topic: any, index: number) => ({

@@ -1,6 +1,8 @@
+
 import { useState, useEffect } from 'react';
 import { LessonSection } from './types';
 import { generateGeminiResponse } from '@/services/gemini';
+import { extractJsonFromResponse } from '@/services/gemini/parser';
 
 export const useLessonData = (topic: string) => {
   const [currentSection, setCurrentSection] = useState(0);
@@ -37,16 +39,9 @@ export const useLessonData = (topic: string) => {
         
         const response = await generateGeminiResponse(prompt, [systemMessage]);
         
-        // Parse the JSON response
-        const contentText = response.text.trim();
-        // Extract JSON if it's wrapped in markdown code blocks
-        const jsonMatch = contentText.match(/```(?:json)?\s*([\s\S]*?)\s*```/) || [null, contentText];
-        const jsonString = jsonMatch[1].trim();
-        
-        let sections: LessonSection[] = [];
-        
+        // Parse the JSON response using the utility function
         try {
-          sections = JSON.parse(jsonString);
+          const sections = extractJsonFromResponse(response.text);
           setLessonSections(sections);
         } catch (error) {
           console.error('Error parsing lesson JSON:', error);
@@ -59,33 +54,33 @@ export const useLessonData = (topic: string) => {
             },
             {
               type: 'explanation',
-              title: 'The Process of Photosynthesis',
-              content: 'Photosynthesis takes place in two stages: the light-dependent reactions and the Calvin cycle. In the light-dependent reactions, which occur in the thylakoid membrane, energy from sunlight is captured and used to produce ATP and NADPH. These energy-carrying molecules power the second stage, the Calvin cycle, which takes place in the stroma. During the Calvin cycle, carbon dioxide from the atmosphere is fixed into organic compounds, ultimately producing glucose.'
+              title: 'Key Concepts',
+              content: 'This section would normally contain detailed explanations of key concepts related to this topic.'
             },
             {
               type: 'example',
-              title: 'Photosynthesis in Action',
-              content: 'Consider a leaf on a sunny day. As sunlight strikes the leaf, chlorophyll molecules in the chloroplasts absorb the light energy. This energy is used to split water molecules, releasing oxygen as a byproduct. The hydrogen from water and carbon dioxide from the air are then used to create glucose, which the plant uses for energy and growth. This is why plants need sunlight, water, and carbon dioxide to survive, and why they release oxygen into the atmosphere.'
+              title: 'Practical Example',
+              content: 'This section would normally contain practical examples and applications of this topic.'
             },
             {
               type: 'quiz',
               title: 'Check Your Understanding',
-              content: 'Let\'s see if you understand the key concepts of photosynthesis.',
+              content: 'Let\'s see if you understand the key concepts.',
               quiz: {
-                question: 'What are the primary inputs needed for photosynthesis?',
+                question: 'What would be a good question about this topic?',
                 options: [
-                  'Oxygen and glucose',
-                  'Carbon dioxide and water',
-                  'Nitrogen and phosphorus',
-                  'ATP and NADPH'
+                  'Option A',
+                  'Option B',
+                  'Option C',
+                  'Option D'
                 ],
-                answer: 1
+                answer: 0
               }
             },
             {
               type: 'summary',
-              title: 'Summary of Photosynthesis',
-              content: 'Photosynthesis is the fundamental process that converts light energy into chemical energy, supporting nearly all life on Earth. Plants use carbon dioxide, water, and sunlight to produce glucose and oxygen. The process occurs in two main stages: the light-dependent reactions and the Calvin cycle. Understanding photosynthesis helps us appreciate how plants convert sunlight into the energy that powers the entire ecosystem.'
+              title: `Summary of ${topic}`,
+              content: 'This section would normally contain a summary of key points about this topic.'
             }
           ]);
         }
@@ -100,33 +95,33 @@ export const useLessonData = (topic: string) => {
           },
           {
             type: 'explanation',
-            title: 'The Process of Photosynthesis',
-            content: 'Photosynthesis takes place in two stages: the light-dependent reactions and the Calvin cycle. In the light-dependent reactions, which occur in the thylakoid membrane, energy from sunlight is captured and used to produce ATP and NADPH. These energy-carrying molecules power the second stage, the Calvin cycle, which takes place in the stroma. During the Calvin cycle, carbon dioxide from the atmosphere is fixed into organic compounds, ultimately producing glucose.'
+            title: 'Key Concepts',
+            content: 'This section would normally contain detailed explanations of key concepts related to this topic.'
           },
           {
             type: 'example',
-            title: 'Photosynthesis in Action',
-            content: 'Consider a leaf on a sunny day. As sunlight strikes the leaf, chlorophyll molecules in the chloroplasts absorb the light energy. This energy is used to split water molecules, releasing oxygen as a byproduct. The hydrogen from water and carbon dioxide from the air are then used to create glucose, which the plant uses for energy and growth. This is why plants need sunlight, water, and carbon dioxide to survive, and why they release oxygen into the atmosphere.'
+            title: 'Practical Example',
+            content: 'This section would normally contain practical examples and applications of this topic.'
           },
           {
             type: 'quiz',
             title: 'Check Your Understanding',
-            content: 'Let\'s see if you understand the key concepts of photosynthesis.',
+            content: 'Let\'s see if you understand the key concepts.',
             quiz: {
-              question: 'What are the primary inputs needed for photosynthesis?',
+              question: 'What would be a good question about this topic?',
               options: [
-                'Oxygen and glucose',
-                'Carbon dioxide and water',
-                'Nitrogen and phosphorus',
-                'ATP and NADPH'
+                'Option A',
+                'Option B',
+                'Option C',
+                'Option D'
               ],
-              answer: 1
+              answer: 0
             }
           },
           {
             type: 'summary',
-            title: 'Summary of Photosynthesis',
-            content: 'Photosynthesis is the fundamental process that converts light energy into chemical energy, supporting nearly all life on Earth. Plants use carbon dioxide, water, and sunlight to produce glucose and oxygen. The process occurs in two main stages: the light-dependent reactions and the Calvin cycle. Understanding photosynthesis helps us appreciate how plants convert sunlight into the energy that powers the entire ecosystem.'
+            title: `Summary of ${topic}`,
+            content: 'This section would normally contain a summary of key points about this topic.'
           }
         ]);
       } finally {

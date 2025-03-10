@@ -1,4 +1,3 @@
-
 // Functions for parsing Gemini API responses
 
 /**
@@ -147,4 +146,26 @@ export const cleanResponseText = (textResponse: string): string => {
     .replace(/\[DRAWING_INSTRUCTIONS\][\s\S]*?\[\/DRAWING_INSTRUCTIONS\]/g, '')
     .replace(/\[FOLLOW_UP\][\s\S]*?\[\/FOLLOW_UP\]/g, '')
     .trim();
+};
+
+/**
+ * Extract JSON from a response that may be wrapped in markdown code blocks
+ */
+export const extractJsonFromResponse = (response: string): any => {
+  try {
+    // Try to extract JSON if it's wrapped in markdown code blocks
+    const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    
+    // If we found a markdown code block, try to parse its contents
+    if (jsonMatch && jsonMatch[1]) {
+      return JSON.parse(jsonMatch[1].trim());
+    }
+    
+    // If no markdown code block, try to parse the entire response as JSON
+    return JSON.parse(response.trim());
+  } catch (error) {
+    console.error('Error extracting JSON from response:', error);
+    // Return an empty array or object as fallback
+    return [];
+  }
 };
