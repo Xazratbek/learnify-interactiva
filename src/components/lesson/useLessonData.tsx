@@ -127,5 +127,50 @@ export const useLessonData = (topic: string) => {
             type: 'summary',
             title: 'Summary of Photosynthesis',
             content: 'Photosynthesis is the fundamental process that converts light energy into chemical energy, supporting nearly all life on Earth. Plants use carbon dioxide, water, and sunlight to produce glucose and oxygen. The process occurs in two main stages: the light-dependent reactions and the Calvin cycle. Understanding photosynthesis helps us appreciate how plants convert sunlight into the energy that powers the entire ecosystem.'
-         
-
+          }
+        ]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    generateLessonContent();
+  }, [topic]);
+  
+  // Handle navigation between sections
+  const handleNext = () => {
+    if (currentSection < lessonSections.length - 1) {
+      setCurrentSection(currentSection + 1);
+      setSelectedAnswer(null);
+      setIsAnswerCorrect(null);
+    }
+  };
+  
+  const handlePrevious = () => {
+    if (currentSection > 0) {
+      setCurrentSection(currentSection - 1);
+      setSelectedAnswer(null);
+      setIsAnswerCorrect(null);
+    }
+  };
+  
+  // Handle quiz answer checking
+  const checkAnswer = (index: number) => {
+    const currentQuiz = lessonSections[currentSection]?.quiz;
+    if (currentQuiz) {
+      setSelectedAnswer(index);
+      setIsAnswerCorrect(index === currentQuiz.answer);
+    }
+  };
+  
+  return {
+    currentSection,
+    lessonSections,
+    selectedAnswer,
+    isAnswerCorrect,
+    isLoading,
+    handleNext,
+    handlePrevious,
+    checkAnswer
+  };
+};
