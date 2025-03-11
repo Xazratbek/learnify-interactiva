@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,6 +8,9 @@ import WhiteboardContainer from '@/components/chat/WhiteboardContainer';
 import { useTextToSpeech } from '@/components/chat/useTextToSpeech';
 import { generateGeminiResponse, GeminiMessage } from '@/services/gemini';
 import { saveConversation, getConversationHistory } from '@/services/gemini/storage';
+import ReactMarkdown from 'react-markdown'; // For code formatting
+import rehypeHighlight from 'rehype-highlight'; // For syntax highlighting
+import 'highlight.js/styles/github-dark.css'; // Syntax highlighting style
 
 interface Message {
   id: string;
@@ -57,12 +59,7 @@ const Chat = () => {
       };
       
       setMessages([welcomeMessage]);
-      setGeminiHistory([
-        {
-          role: 'model' as const,
-          parts: [{ text: welcomeMessage.content }]
-        }
-      ]);
+      setGeminiHistory([]); // Initialize with empty history
       
       if (!isMuted) {
         speak(welcomeMessage.content);
@@ -144,6 +141,8 @@ const Chat = () => {
   };
 
   const handleSendMessage = async (messageContent: string) => {
+    console.log("Sending message:", messageContent);
+
     // Add user message to the UI
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -151,113 +150,92 @@ const Chat = () => {
       sender: 'user',
       timestamp: new Date(),
     };
-    
+
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
     setIsAiThinking(true);
-    
-    // Update the chat title if this is the first user message
-    if (currentChatTitle === "New Chat" && messages.length <= 1) {
-      // Use the first ~30 chars of the user's message as the title
-      const newTitle = messageContent.length > 30 
-        ? messageContent.substring(0, 30) + '...' 
-        : messageContent;
-      setCurrentChatTitle(newTitle);
-    }
-    
+
     try {
-      // Process common learning requests
-      const lowerMessage = messageContent.toLowerCase();
-      let enhancedPrompt = messageContent;
-      
-      if (lowerMessage.includes('teach me') || lowerMessage.includes('explain') || lowerMessage.includes('how does') || lowerMessage.includes('what is')) {
-        if (lowerMessage.includes('url') || lowerMessage.includes('browser') || lowerMessage.includes('web')) {
-          enhancedPrompt += " Please include a visual explanation with drawing instructions to illustrate the process.";
-        }
-      }
-      
+      // Enhanced prompt with JSON template
+      const enhancedPrompt = `
+        ${messageContent}
+        
+        Please provide:
+        1. A detailed explanation
+        2. If applicable, include visual instructions in JSON format:
+        \`\`\`json
+        [
+          {
+            "type": "shape",
+            "points": [[x1,y1], [x2,y2], ...],
+            "color": "#HEXCODE",
+            "width": number,
+            "label": "text"
+          }
+        ]
+        \`\`\`
+        3. An optional follow-up question if needed.
+      `;
+
       // Generate AI response using Gemini
-      const updatedHistory: GeminiMessage[] = [
-        ...geminiHistory,
-        { role: 'user' as const, parts: [{ text: messageContent }] }
-      ];
-      
-      const geminiResponse = await generateGeminiResponse(
-        enhancedPrompt,
-        geminiHistory
-      );
-      
+      const geminiResponse = await generateGeminiResponse(enhancedPrompt, geminiHistory);
+
       // Create the AI response message
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
         content: geminiResponse.text,
         sender: 'ai',
         timestamp: new Date(),
-        drawingInstructions: geminiResponse.drawingInstructions
+        drawingInstructions: geminiResponse.drawingInstructions,
       };
-      
+
       // Update messages state with AI response
       const finalMessages = [...updatedMessages, aiResponse];
       setMessages(finalMessages);
-      
+
       // Update Gemini conversation history
       const finalHistory: GeminiMessage[] = [
-        ...updatedHistory,
-        { role: 'model' as const, parts: [{ text: geminiResponse.text }] }
+        ...geminiHistory,
+        { role: 'user', parts: [{ text: messageContent }] },
+        { role: 'model', parts: [{ text: geminiResponse.text }] },
       ];
       setGeminiHistory(finalHistory);
-      
-      // Save the conversation to the database
-      if (user?.id) {
-        await saveConversation(user.id, finalHistory);
-        loadChatHistory(); // Refresh chat history
-      }
-      
-      // If there are drawing instructions, update whiteboard data and switch to it
-      if (geminiResponse.drawingInstructions && geminiResponse.drawingInstructions.length > 0) {
+
+      // If there are drawing instructions, update whiteboard data
+      if (geminiResponse.drawingInstructions) {
         setWhiteboardData(geminiResponse.drawingInstructions);
         toast.info("Visual explanation created! Check the whiteboard tab to see it.", {
           duration: 5000,
           action: {
             label: "View",
-            onClick: () => setActiveTab("whiteboard")
-          }
+            onClick: () => setActiveTab("whiteboard"),
+          },
         });
       }
-      
-      // Speak the AI response if text-to-speech is enabled
-      if (!isMuted) {
-        speak(geminiResponse.text);
-      }
-      
+
       // If there's a follow-up question, send it after a delay
       if (geminiResponse.shouldAskFollowUp && geminiResponse.followUpQuestion) {
         setTimeout(() => {
           const followUpMessage: Message = {
             id: (Date.now() + 2).toString(),
-            content: geminiResponse.followUpQuestion!,
+            content: geminiResponse.followUpQuestion,
             sender: 'ai',
             timestamp: new Date(),
-            isFollowUpQuestion: true
+            isFollowUpQuestion: true,
           };
-          
+
           const messagesWithFollowUp = [...finalMessages, followUpMessage];
           setMessages(messagesWithFollowUp);
-          
+
           const historyWithFollowUp: GeminiMessage[] = [
             ...finalHistory,
-            { role: 'model' as const, parts: [{ text: geminiResponse.followUpQuestion! }] }
+            { role: 'model', parts: [{ text: geminiResponse.followUpQuestion }] },
           ];
           setGeminiHistory(historyWithFollowUp);
-          
-          // Save updated conversation with follow-up
-          if (user?.id) {
-            saveConversation(user.id, historyWithFollowUp)
-              .then(() => loadChatHistory());
-          }
-          
+
+          // Speak the follow-up question if text-to-speech is enabled
           if (!isMuted) {
-            speak(geminiResponse.followUpQuestion!);
+            speak(geminiResponse.followUpQuestion);
           }
         }, 5000); // Wait 5 seconds before asking the follow-up
       }

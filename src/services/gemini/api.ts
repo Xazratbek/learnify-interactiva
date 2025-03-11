@@ -1,7 +1,6 @@
-
 import { genAI, defaultGenerationConfig, defaultSafetySettings, GEMINI_MODEL } from './config';
 import { GeminiMessage, GeminiResponse } from './types';
-import { parseDrawingInstructions, parseFollowUpQuestion, cleanResponseText } from './parser';
+import { parseGeminiResponse } from './parser'; // Updated import
 import { toast } from 'sonner';
 
 /**
@@ -12,56 +11,73 @@ export const generateGeminiResponse = async (
   conversationHistory: GeminiMessage[] = []
 ): Promise<GeminiResponse> => {
   try {
-    // Create a copy of the history to avoid mutating the original
-    const history = [...conversationHistory];
-    
+    console.log('Starting generateGeminiResponse function...');
+    console.log('Prompt:', prompt);
+    console.log('Conversation History:', conversationHistory);
+
+    // Ensure the first message in the history has the role 'user'
+    const history = conversationHistory.length > 0 && conversationHistory[0].role === 'user'
+      ? [...conversationHistory]
+      : [{ role: 'user', parts: [{ text: prompt }] }];
+
+    console.log('History after validation:', history);
+
     // Get the Gemini model with configuration
+    console.log('Getting Gemini model...');
     const model = genAI.getGenerativeModel({ 
       model: GEMINI_MODEL,
-      generationConfig: defaultGenerationConfig,
+      generationConfig: {
+        ...defaultGenerationConfig,
+        maxOutputTokens: 5000, // Increased token limit
+      },
       safetySettings: defaultSafetySettings,
     });
+    console.log('Model initialized:', model);
 
     // Convert conversation history to client library format
+    console.log('Converting conversation history...');
     const clientHistory = history.map(msg => ({
       role: msg.role,
       parts: [{ text: msg.parts[0].text }]
     }));
+    console.log('Client history:', clientHistory);
 
     // Start a new chat session with history
+    console.log('Starting chat session...');
     const chat = model.startChat({
       history: clientHistory,
       generationConfig: {
-        maxOutputTokens: 1024,
+        maxOutputTokens: 5000, // Increased token limit
       },
     });
+    console.log('Chat session started:', chat);
 
     // Set up a timeout for the API call
+    console.log('Setting up timeout...');
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => reject(new Error('API request timed out')), 30000); // 30 seconds timeout
     });
 
     // Send the message with a timeout
+    console.log('Sending message to Gemini API...');
     const responsePromise = chat.sendMessage(prompt);
     const result = await Promise.race([responsePromise, timeoutPromise]);
-    
+    console.log('API response received:', result);
+
     // If we get here, the API call completed before the timeout
     const textResponse = result.response.text();
-    
-    // Parse drawing instructions if they exist
-    const drawingInstructions = parseDrawingInstructions(textResponse);
-    
-    // Parse follow-up question if it exists
-    const { shouldAsk, question } = parseFollowUpQuestion(textResponse);
-    
-    // Clean up the text response
-    const cleanedText = cleanResponseText(textResponse);
-    
+    console.log('Text response:', textResponse);
+
+    // Parse the Gemini response using the new parseGeminiResponse function
+    const parsedResponse = parseGeminiResponse(textResponse);
+    console.log('Parsed response:', parsedResponse);
+
+    console.log('Returning final response...');
     return {
-      text: cleanedText,
-      drawingInstructions,
-      shouldAskFollowUp: shouldAsk,
-      followUpQuestion: question
+      text: parsedResponse.text,
+      drawingInstructions: parsedResponse.drawingInstructions,
+      shouldAskFollowUp: parsedResponse.shouldAskFollowUp,
+      followUpQuestion: parsedResponse.followUpQuestion,
     };
   } catch (error) {
     console.error('Error generating Gemini response:', error);

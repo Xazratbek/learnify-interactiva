@@ -1,151 +1,52 @@
-// Functions for parsing Gemini API responses
-
 /**
  * Parse drawing instructions from the text response
  */
-export const parseDrawingInstructions = (textResponse: string): any[] | undefined => {
+export const parseDrawingInstructions = (text: string): any[] => {
   try {
-    // Look for JSON array of drawing instructions in the response
-    const jsonRegex = /\[\s*\{\s*"type"\s*:/;
-    if (jsonRegex.test(textResponse)) {
-      const jsonStartIndex = textResponse.search(jsonRegex);
-      if (jsonStartIndex !== -1) {
-        // Extract JSON from the response
-        let bracketCount = 0;
-        let endIndex = jsonStartIndex;
-        let inString = false;
-        let escapeNext = false;
-        
-        for (let i = jsonStartIndex; i < textResponse.length; i++) {
-          const char = textResponse[i];
-          
-          if (escapeNext) {
-            escapeNext = false;
-            continue;
-          }
-          
-          if (char === '\\') {
-            escapeNext = true;
-            continue;
-          }
-          
-          if (char === '"' && !escapeNext) {
-            inString = !inString;
-            continue;
-          }
-          
-          if (!inString) {
-            if (char === '[') bracketCount++;
-            if (char === ']') {
-              bracketCount--;
-              if (bracketCount === 0) {
-                endIndex = i + 1;
-                break;
-              }
-            }
-          }
-        }
-        
-        const jsonString = textResponse.substring(jsonStartIndex, endIndex);
-        try {
-          return JSON.parse(jsonString);
-        } catch (e) {
-          console.error('Failed to parse JSON drawing instructions:', e);
-        }
-      }
-    }
-    
-    // Fall back to the original bracketed format if JSON parsing fails
-    const drawingMatch = textResponse.match(/\[DRAWING_INSTRUCTIONS\]([\s\S]*?)\[\/DRAWING_INSTRUCTIONS\]/);
-    if (drawingMatch && drawingMatch[1]) {
-      try {
-        const instructionsJson = JSON.parse(drawingMatch[1].trim());
-        return instructionsJson.instructions;
-      } catch (e) {
-        console.error('Failed to parse drawing instructions:', e);
-      }
-    }
-    
-    return undefined;
+    // Look for JSON block in the response (wrapped in markdown code blocks)
+    const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
+    if (!jsonMatch) return [];
+
+    const jsonString = jsonMatch[1];
+    const instructions = JSON.parse(jsonString);
+
+    // Validate the basic structure
+    if (!Array.isArray(instructions)) return [];
+
+    // Map instructions to a standardized format
+    return instructions.map(instruction => ({
+      type: instruction.type || 'line', // Default to 'line' if type is missing
+      points: instruction.points || [], // Ensure points is an array
+      color: instruction.color || '#000000', // Default to black if color is missing
+      width: instruction.width || 2, // Default width of 2 if missing
+      label: instruction.label || '', // Default to empty label if missing
+    }));
   } catch (error) {
     console.error('Error parsing drawing instructions:', error);
-    return undefined;
+    return [];
   }
 };
 
 /**
  * Parse follow-up question from the text response
  */
-export const parseFollowUpQuestion = (textResponse: string): { shouldAsk: boolean, question?: string } => {
-  const followUpMatch = textResponse.match(/\[FOLLOW_UP\]([\s\S]*?)\[\/FOLLOW_UP\]/);
-  
-  if (followUpMatch && followUpMatch[1]) {
-    return {
-      shouldAsk: true,
-      question: followUpMatch[1].trim()
-    };
-  }
-  
+export const parseFollowUpQuestion = (text: string) => {
+  // Look for a follow-up question in the format [QUESTION]: <question>
+  const questionMatch = text.match(/\[QUESTION\]:\s*(.+?)\s*(\n|$)/);
   return {
-    shouldAsk: false
+    shouldAsk: !!questionMatch, // Boolean indicating if a follow-up question exists
+    question: questionMatch?.[1] || '', // Extract the question text
   };
 };
 
 /**
- * Clean up the text response by removing instructions and follow-up sections
+ * Clean up the text response by removing unnecessary sections
  */
-export const cleanResponseText = (textResponse: string): string => {
-  let cleaned = textResponse;
-  
-  // Remove JSON drawing instructions if they exist
-  const jsonRegex = /\[\s*\{\s*"type"\s*:/;
-  if (jsonRegex.test(cleaned)) {
-    const jsonStartIndex = cleaned.search(jsonRegex);
-    if (jsonStartIndex !== -1) {
-      let bracketCount = 0;
-      let endIndex = jsonStartIndex;
-      let inString = false;
-      let escapeNext = false;
-      
-      for (let i = jsonStartIndex; i < cleaned.length; i++) {
-        const char = cleaned[i];
-        
-        if (escapeNext) {
-          escapeNext = false;
-          continue;
-        }
-        
-        if (char === '\\') {
-          escapeNext = true;
-          continue;
-        }
-        
-        if (char === '"' && !escapeNext) {
-          inString = !inString;
-          continue;
-        }
-        
-        if (!inString) {
-          if (char === '[') bracketCount++;
-          if (char === ']') {
-            bracketCount--;
-            if (bracketCount === 0) {
-              endIndex = i + 1;
-              break;
-            }
-          }
-        }
-      }
-      
-      cleaned = cleaned.substring(0, jsonStartIndex) + cleaned.substring(endIndex);
-    }
-  }
-  
-  // Remove bracketed sections
-  return cleaned
-    .replace(/\[DRAWING_INSTRUCTIONS\][\s\S]*?\[\/DRAWING_INSTRUCTIONS\]/g, '')
-    .replace(/\[FOLLOW_UP\][\s\S]*?\[\/FOLLOW_UP\]/g, '')
-    .trim();
+export const cleanResponseText = (text: string) => {
+  return text
+    .replace(/```json[\s\S]*?```/g, '') // Remove JSON code blocks
+    .replace(/\[QUESTION\]:.*?(\n|$)/g, '') // Remove follow-up question markers
+    .trim(); // Trim leading/trailing whitespace
 };
 
 /**
@@ -155,17 +56,33 @@ export const extractJsonFromResponse = (response: string): any => {
   try {
     // Try to extract JSON if it's wrapped in markdown code blocks
     const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-    
+
     // If we found a markdown code block, try to parse its contents
     if (jsonMatch && jsonMatch[1]) {
       return JSON.parse(jsonMatch[1].trim());
     }
-    
+
     // If no markdown code block, try to parse the entire response as JSON
     return JSON.parse(response.trim());
   } catch (error) {
     console.error('Error extracting JSON from response:', error);
-    // Return an empty array or object as fallback
+    // Return an empty array as fallback
     return [];
   }
+};
+
+/**
+ * Parse the full Gemini response into structured data
+ */
+export const parseGeminiResponse = (textResponse: string) => {
+  const drawingInstructions = parseDrawingInstructions(textResponse);
+  const { shouldAsk, question } = parseFollowUpQuestion(textResponse);
+  const cleanedText = cleanResponseText(textResponse);
+
+  return {
+    text: cleanedText,
+    drawingInstructions,
+    shouldAskFollowUp: shouldAsk,
+    followUpQuestion: question,
+  };
 };
